@@ -1,0 +1,12 @@
+# Normalize line endings to LF in the repository (00-Project-Foundation §11.3).
+# Without this, Windows CRLF produces diffs where every line appears changed.
+* text=auto eol=lf
+
+# Binary files — never normalize
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg text
+*.pdf binary
+*.ico binary
