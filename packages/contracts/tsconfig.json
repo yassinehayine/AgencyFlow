@@ -1,0 +1,14 @@
+{
+  "extends": "@agencyflow/config/tsconfig.base.json",
+  "compilerOptions": {
+    // CommonJS is the safe common denominator: NestJS requires it natively,
+    // and Vite pre-bundles CommonJS workspace dependencies without issue.
+    // ADR-0001 — this package carries zero runtime dependencies.
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}
