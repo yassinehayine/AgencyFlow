@@ -751,6 +751,12 @@ Baseline: `printWidth: 100`, `singleQuote: true`, `semi: true`, `trailingComma: 
 
 > **`endOfLine: "lf"` is critical on Windows.** Without it, Git line-ending conversion produces PRs where every line appears changed. Pair it with `.gitattributes` containing `* text=auto eol=lf`.
 
+**Amendment (2026-07-31, Slice 1): `docs/` and `README.md` are excluded from Prettier.**
+
+Prettier's justification above is that *diffs contain only semantic changes*. On markdown prose it produces the opposite result: it repads whole tables when one word changes. Measured before deciding — **872 changed lines in a single approved document, with zero content difference**; roughly 5 000 lines across the twelve design documents.
+
+Prettier therefore owns **code** formatting; markdown prose is reviewed by a human. CI gate 1 (§14.4) checks code paths only. Recorded in `.prettierignore` with the same rationale.
+
 ### 11.4 Linting: ESLint
 
 - `@typescript-eslint` recommended + type-checked rules

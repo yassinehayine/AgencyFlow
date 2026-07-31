@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "displayName": "AgencyFlow base",
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+
+    // Non-negotiable strictness (00-Project-Foundation.md 11.1).
+    // Enabling these on an empty repository costs nothing; enabling them
+    // later means fixing hundreds of errors at the worst possible moment.
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+
+    // Development happens on Windows (case-insensitive) and deployment on
+    // Linux (case-sensitive). Without this, an import that resolves locally
+    // fails in production. Catches it at compile time instead.
+    "forceConsistentCasingInFileNames": true,
+
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "pretty": true
+  }
+}

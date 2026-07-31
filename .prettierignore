@@ -4,3 +4,17 @@ build/
 coverage/
 package-lock.json
 .docker-data/
+
+# Approved design documentation.
+#
+# Prettier exists so that diffs contain only semantic changes
+# (00-Project-Foundation.md 11.3). On markdown prose it does the opposite:
+# it repads entire tables when a single word changes, which would bury real
+# edits to frozen documents under thousands of whitespace-only lines.
+# Measured cost when this was evaluated: 872 changed lines in one document,
+# zero content difference.
+#
+# Prettier owns code formatting. Markdown prose is reviewed by a human.
+docs/
+README.md
+
