@@ -31,6 +31,10 @@ export function AppLayout() {
         <span className="text-base font-semibold text-slate-900">{fr.common.appName}</span>
 
         <nav className="flex gap-1" aria-label={fr.common.appName}>
+          {/* Visible to every role — the list itself is what differs. */}
+          <NavLink to="/projects" className={linkClass}>
+            {fr.nav.projects}
+          </NavLink>
           {hasRole(Role.ADMINISTRATOR) && (
             <NavLink to="/users" className={linkClass}>
               {fr.nav.users}
