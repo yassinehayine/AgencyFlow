@@ -518,7 +518,9 @@ flowchart TB
 
 **The problem.** BR-10 demands that a Client Contact never see another organization's data. The naive implementation adds `clientId` to each query in each service. That is correct exactly as long as every developer, on every query, forever, remembers. NFR-21 explicitly rejects it: enforcement must be *"at the data-access layer, not the controller layer alone."*
 
-**The decision.** An **`AccessScope`** value object is constructed once per request from the verified JWT and is a mandatory parameter of every repository read.
+**The decision.** An **`AccessScope`** value object is constructed once per request from the server's own record of the authenticated user, and is a mandatory parameter of every repository read.
+
+> **Amended 2026-08-01 by [ADR-0005](adr/0005-per-request-user-revalidation.md).** This paragraph originally read *"constructed once per request from the verified JWT and from nothing else."* Implementing user administration showed that reading `role` and `clientId` from the token froze them for the token's whole 12-hour life — so a deactivated employee kept working access, and a demoted user kept the permissions they had been demoted out of, while the Administrator who made the change believed it had taken effect. The token now establishes **identity only**; the acting user is re-read on every authenticated request and the scope is built from that record. The "server-derived, never from a request" property below is unchanged and in fact strengthened.
 
 ```ts
 // Illustrative shape — not an implementation
@@ -538,7 +540,8 @@ Repositories translate the scope into query filters **before** any caller-suppli
 | **Safe by default** | Forgetting the scope is a **compile error**, not a data leak. The type system enforces BR-10 |
 | **One place to audit** | Reviewing isolation means reading the repository base class, not 60 query sites |
 | **One place to test** | TC-079 tests the mechanism, not every endpoint |
-| **Server-derived** | Scope comes from the token. `clientId` is **never** read from a request body or query parameter |
+| **Server-derived** | Scope comes from the stored user record, identified by the token. `clientId` is **never** read from a request body or query parameter — nor, since ADR-0005, from the token itself |
+| **Never stale** | A role change, deactivation or soft delete takes effect on the **next request**, not at token expiry (FR-009, FR-010) |
 
 **This is the single most important architectural decision in the document.** It converts BR-10 from a rule people must remember into a property of the system — which is the only form in which a security rule survives contact with a deadline.
 

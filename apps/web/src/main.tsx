@@ -2,7 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { SystemStatusPage } from './pages/SystemStatusPage';
+import { RouterProvider } from 'react-router-dom';
+
+import { router } from './app/router';
+import { AuthProvider } from './features/auth/AuthContext';
 import './styles/index.css';
 
 /**
@@ -36,8 +39,13 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
+    {/* QueryClientProvider wraps AuthProvider, not the other way round: logging
+        out clears the query cache, so the auth context has to be able to reach
+        the client. */}
     <QueryClientProvider client={queryClient}>
-      <SystemStatusPage />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

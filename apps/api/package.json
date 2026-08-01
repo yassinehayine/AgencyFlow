@@ -12,7 +12,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "verify:storage": "node scripts/verify-storage.js"
+    "verify:storage": "node scripts/verify-storage.js",
+    "seed:admin": "node scripts/seed-admin.js"
   },
   "dependencies": {
     "@agencyflow/contracts": "0.1.0",
@@ -61,10 +62,11 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.ts$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.ts",
+      "!**/*.spec.ts"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"

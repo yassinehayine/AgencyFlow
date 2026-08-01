@@ -137,17 +137,24 @@ Transitions are **named `POST` sub-resources**, never `PATCH { status }` (`05-Ar
 ### 3.2 Request pipeline
 
 ```
-Request → JwtAuthGuard → RolesGuard → ScopeInterceptor → Controller → Service → ScopedRepository → MongoDB
-             │               │              │                             │              │
-          valid token?   role may       build AccessScope        BR-04/05/07/25    scope applied
-                         reach route?   from the token           policy checks     to every query
+Request → JwtAuthGuard → RolesGuard → Controller → Service → ScopedRepository → MongoDB
+             │               │                        │              │
+       signature valid?  role may            BR-04/05/07/25    scope applied
+       user still         reach route?       policy checks     to every query
+       active? →
+       build AccessScope
+       from the RECORD
 ```
 
 Four layers, each catching what the previous cannot (`05-Architecture` §11.2). `RolesGuard` answers *"is this user a PM?"*; only the service can answer *"is this user the PM **of this project**, and is the task **in review**?"*
 
+> **Amended 2026-08-01.** Two corrections against the implementation. There is no separate `ScopeInterceptor`: the scope is built inside `JwtStrategy`, at the one point where the signature has just been verified, which removes any window in which a request exists without a scope. And it is built from the re-read user record rather than from the token (ADR-0005), which is why the "user still active?" check sits in layer 1.
+
 ### 3.3 `AccessScope`
 
-Built once per request **from the signed token only** — never from a body or query parameter.
+Built once per request from the **stored user record**, identified by the signed token — never from a body or query parameter.
+
+> **Amended 2026-08-01 by [ADR-0005](adr/0005-per-request-user-revalidation.md).** Originally *"from the signed token only"*. `JwtStrategy` now re-reads the acting user on every authenticated request and refuses the request if that user is inactive or deleted. The token proves **who**; the database decides **what they may do**. Cost: one indexed `_id` read per authenticated request. Public routes are unaffected — `JwtAuthGuard` short-circuits on `@Public()` before the strategy runs. `AccessScope.fromClaims()` is accordingly named `AccessScope.forUser()`.
 
 ```ts
 interface AccessScope {

@@ -1,13 +1,25 @@
-import { Role, type JwtClaims } from '@agencyflow/contracts';
+import { Role } from '@agencyflow/contracts';
+
+import type { AuthenticatedUserRecord } from './authenticated-user.port';
+
+/**
+ * Sentinel user id for trusted internal work. Not an ObjectId on purpose: it
+ * cannot collide with a real user, and a stray attempt to store it as one
+ * fails loudly at the cast rather than creating a phantom account.
+ */
+export const SYSTEM_ACTOR_ID = 'system';
 
 /**
  * The authorisation context of a single request.
  *
  * This is the mechanism that makes BR-10 structural rather than remembered
  * (05-Software-Architecture.md section 11.3). It is constructed once per
- * request from the VERIFIED JWT and from nothing else: `clientId` is never
- * read from a request body, a query parameter or a path segment, because a
- * client-supplied organisation id would defeat isolation entirely.
+ * request from the user record identified by the VERIFIED JWT: `clientId` is
+ * never read from a request body, a query parameter or a path segment,
+ * because a client-supplied organisation id would defeat isolation entirely.
+ *
+ * The token supplies the identity; the database supplies the permissions
+ * (ADR-0005).
  *
  * Every ScopedRepository method requires one. There is no overload without it,
  * so forgetting the scope is a compile error rather than a data leak.
@@ -19,9 +31,19 @@ export class AccessScope {
     readonly clientId?: string,
   ) {}
 
-  /** Builds a scope from verified token claims. The only supported entry point. */
-  static fromClaims(claims: JwtClaims): AccessScope {
-    return new AccessScope(claims.sub, claims.role, claims.clientId);
+  /**
+   * Builds a scope for a user whose record has just been re-read from the
+   * database. The only supported entry point for a real request.
+   *
+   * Named `forUser` and not `fromClaims` for a reason worth stating: the
+   * signed token establishes WHO is calling, and nothing more. `role` and
+   * `clientId` are read from the current record, so a role change or a
+   * deactivation takes effect on the next request rather than at token expiry
+   * (FR-009, ADR-0005). A scope built from claims would be a scope built from
+   * a snapshot up to twelve hours old.
+   */
+  static forUser(user: AuthenticatedUserRecord): AccessScope {
+    return new AccessScope(user.userId, user.role, user.clientId);
   }
 
   /**
@@ -30,7 +52,20 @@ export class AccessScope {
    * call site: it bypasses every filter below.
    */
   static systemScope(): AccessScope {
-    return new AccessScope('system', Role.ADMINISTRATOR);
+    return new AccessScope(SYSTEM_ACTOR_ID, Role.ADMINISTRATOR);
+  }
+
+  /**
+   * The user id to record in `createdBy` / `updatedBy` / `deletedBy`, or
+   * `null` when there is no acting user.
+   *
+   * The audit fields are `ObjectId | null` (06-Database-Design.md section 5.1)
+   * and the system sentinel is not an ObjectId, so writing `userId` blindly
+   * would make every seeded record fail to cast. `null` is the documented
+   * value for exactly this case.
+   */
+  get actorId(): string | null {
+    return this.userId === SYSTEM_ACTOR_ID ? null : this.userId;
   }
 
   isAdministrator(): boolean {
