@@ -8,6 +8,8 @@ import { AppConfigModule } from './core/config/app-config.module';
 import { AppConfigService } from './core/config/app-config.service';
 import { SecurityModule } from './core/security/security.module';
 import { StorageModule } from './core/storage/storage.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ClientsModule } from './modules/clients/clients.module';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -44,7 +46,9 @@ import { UsersModule } from './modules/users/users.module';
 
     // --- Features ---------------------------------------------------------
     HealthModule,
+    AuthModule,
     UsersModule,
+    ClientsModule,
   ],
 })
 export class AppModule {}
