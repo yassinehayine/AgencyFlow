@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import type { FilterQuery, Model, QueryOptions, UpdateQuery } from 'mongoose';
 
 import type { AccessScope } from '../authorization/access-scope';
@@ -31,22 +32,70 @@ export abstract class ScopedRepository<TDocument> {
   protected abstract scopeFilter(scope: AccessScope): FilterQuery<TDocument>;
 
   /**
-   * Composes the scope filter, the soft-delete exclusion and the caller's
-   * filter. Scope is spread last so a caller cannot override it - passing
-   * `{ clientId: someoneElse }` cannot widen what the scope permits.
+   * Composes the caller's filter, the soft-delete exclusion and the scope
+   * filter as an explicit conjunction.
+   *
+   * `$and` rather than object spread. Spreading looks equivalent and is not:
+   * when both sides constrain the same key, the last one silently WINS rather
+   * than both applying. Concretely, a repository whose scope filter pins
+   * `_id` to the caller's own record would have overwritten the `_id` that
+   * `findById` had just put in - so asking for another user's record would
+   * have quietly returned your own instead of nothing. A wrong document is a
+   * far worse failure than an empty result, and it is the kind that passes a
+   * casual test.
+   *
+   * `$and` makes both constraints apply, so a scope can only ever narrow.
    */
   protected buildFilter(
     scope: AccessScope,
     filter: FilterQuery<TDocument> = {},
     options: { includeDeleted?: boolean } = {},
   ): FilterQuery<TDocument> {
-    const base = options.includeDeleted ? {} : { deletedAt: null };
+    const clauses = [
+      filter,
+      options.includeDeleted ? {} : { deletedAt: null },
+      this.scopeFilter(scope),
+    ].filter((clause) => Object.keys(clause).length > 0) as FilterQuery<TDocument>[];
 
-    return {
-      ...filter,
-      ...base,
-      ...this.scopeFilter(scope),
-    } as FilterQuery<TDocument>;
+    // MongoDB rejects an empty `$and`, and a single clause needs no wrapper.
+    if (clauses.length === 0) {
+      return {};
+    }
+
+    return clauses.length === 1 ? clauses[0] : ({ $and: clauses } as FilterQuery<TDocument>);
+  }
+
+  /**
+   * Guards every id-keyed lookup.
+   *
+   * A malformed id is a client mistake, not a server fault: Mongoose would
+   * throw a CastError and the filter would turn it into a 500, telling an
+   * attacker that the id was at least parsed. Treating it as "no such
+   * document" keeps the response identical to any other miss (BR-10).
+   */
+  protected isValidId(id: string): boolean {
+    return Types.ObjectId.isValid(id);
+  }
+
+  /**
+   * Inserts a document, stamping the actor.
+   *
+   * Creation takes no scope FILTER - there is nothing to filter yet - but it
+   * still takes the scope, because that is where the actor comes from. Audit
+   * stamping done here once cannot be forgotten by a caller, which is the
+   * whole point of `06-Database-Design.md` section 5.1 being a block every
+   * collection carries rather than a convention each service follows.
+   */
+  async create(data: Partial<TDocument>, scope: AccessScope): Promise<TDocument> {
+    const actorId = scope.actorId;
+
+    const created = await this.model.create({
+      ...data,
+      createdBy: actorId,
+      updatedBy: actorId,
+    });
+
+    return created as TDocument;
   }
 
   async findById(
@@ -54,6 +103,10 @@ export abstract class ScopedRepository<TDocument> {
     scope: AccessScope,
     options: { includeDeleted?: boolean } = {},
   ): Promise<TDocument | null> {
+    if (!this.isValidId(id)) {
+      return null;
+    }
+
     return this.model
       .findOne(this.buildFilter(scope, { _id: id } as FilterQuery<TDocument>, options))
       .exec();
@@ -95,22 +148,49 @@ export abstract class ScopedRepository<TDocument> {
     update: UpdateQuery<TDocument>,
     scope: AccessScope,
   ): Promise<TDocument | null> {
+    if (!this.isValidId(id)) {
+      return null;
+    }
+
     return this.model
-      .findOneAndUpdate(this.buildFilter(scope, { _id: id } as FilterQuery<TDocument>), update, {
-        new: true,
-      })
+      .findOneAndUpdate(
+        this.buildFilter(scope, { _id: id } as FilterQuery<TDocument>),
+        this.withUpdateAudit(update, scope),
+        { new: true },
+      )
       .exec();
   }
 
-  /** Soft delete. No repository method physically removes a record (BR-30). */
-  async softDeleteById(
-    id: string,
+  /**
+   * Merges `updatedBy` into the caller's `$set`.
+   *
+   * Applied here rather than at each call site: an update that forgets to
+   * record who made it leaves an audit trail with a hole in it, and the hole
+   * is invisible until someone needs the trail.
+   */
+  private withUpdateAudit(
+    update: UpdateQuery<TDocument>,
     scope: AccessScope,
-    deletedBy: string,
-  ): Promise<TDocument | null> {
+  ): UpdateQuery<TDocument> {
+    const existingSet = (update.$set ?? {}) as Record<string, unknown>;
+
+    return {
+      ...update,
+      $set: { ...existingSet, updatedBy: scope.actorId },
+    } as UpdateQuery<TDocument>;
+  }
+
+  /**
+   * Soft delete. No repository method physically removes a record (BR-30).
+   *
+   * The deleting actor comes from the scope rather than a separate argument:
+   * two sources for one fact eventually disagree, and the scope is the one
+   * that cannot be spoofed.
+   */
+  async softDeleteById(id: string, scope: AccessScope): Promise<TDocument | null> {
     return this.updateById(
       id,
-      { $set: { deletedAt: new Date(), deletedBy } } as UpdateQuery<TDocument>,
+      { $set: { deletedAt: new Date(), deletedBy: scope.actorId } } as UpdateQuery<TDocument>,
       scope,
     );
   }

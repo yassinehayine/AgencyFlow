@@ -1,6 +1,13 @@
 import { Role, type JwtClaims } from '@agencyflow/contracts';
 
 /**
+ * Sentinel user id for trusted internal work. Not an ObjectId on purpose: it
+ * cannot collide with a real user, and a stray attempt to store it as one
+ * fails loudly at the cast rather than creating a phantom account.
+ */
+export const SYSTEM_ACTOR_ID = 'system';
+
+/**
  * The authorisation context of a single request.
  *
  * This is the mechanism that makes BR-10 structural rather than remembered
@@ -30,7 +37,20 @@ export class AccessScope {
    * call site: it bypasses every filter below.
    */
   static systemScope(): AccessScope {
-    return new AccessScope('system', Role.ADMINISTRATOR);
+    return new AccessScope(SYSTEM_ACTOR_ID, Role.ADMINISTRATOR);
+  }
+
+  /**
+   * The user id to record in `createdBy` / `updatedBy` / `deletedBy`, or
+   * `null` when there is no acting user.
+   *
+   * The audit fields are `ObjectId | null` (06-Database-Design.md section 5.1)
+   * and the system sentinel is not an ObjectId, so writing `userId` blindly
+   * would make every seeded record fail to cast. `null` is the documented
+   * value for exactly this case.
+   */
+  get actorId(): string | null {
+    return this.userId === SYSTEM_ACTOR_ID ? null : this.userId;
   }
 
   isAdministrator(): boolean {
