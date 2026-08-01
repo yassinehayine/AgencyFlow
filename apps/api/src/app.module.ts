@@ -11,6 +11,7 @@ import { StorageModule } from './core/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { HealthModule } from './modules/health/health.module';
+import { ProjectsModule } from './modules/projects/projects.module';
 import { AuthenticatedUserLookupModule } from './modules/users/authenticated-user-lookup.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -56,6 +57,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     ClientsModule,
+    ProjectsModule,
   ],
 })
 export class AppModule {}

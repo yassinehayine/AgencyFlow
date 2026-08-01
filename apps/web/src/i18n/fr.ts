@@ -42,9 +42,58 @@ export const fr = {
   },
 
   nav: {
+    projects: 'Projets',
     users: 'Utilisateurs',
     clients: 'Clients',
     status: 'État du système',
+  },
+
+  projects: {
+    title: 'Projets',
+    subtitle: 'Les projets que votre rôle vous permet de suivre.',
+    createTitle: 'Nouveau projet',
+    name: 'Nom du projet',
+    description: 'Description',
+    client: 'Client',
+    manager: 'Chef de projet',
+    startDate: 'Date de début',
+    endDate: 'Date de fin',
+    status: 'Statut',
+    team: 'Équipe',
+    teamSize: 'Personnes',
+    milestones: 'Jalons',
+    progress: 'Avancement',
+    archived: 'Archivé',
+    searchPlaceholder: 'Nom du projet',
+    filterByStatus: 'Tous les statuts',
+    selectClient: 'Sélectionner un client',
+    selectManager: 'Sélectionner un chef de projet',
+    addMember: 'Ajouter au projet',
+    removeMember: 'Retirer',
+    selectMember: 'Sélectionner un membre d’équipe',
+    changeStatusTo: 'Faire passer à',
+    reassignManager: 'Changer de chef de projet',
+    noTransitions: 'Ce projet a atteint un statut final : aucun changement n’est possible.',
+    // BR-28 — a Client Contact never sees the roster. Saying so beats an
+    // empty panel that reads as "nobody is working on this".
+    teamHiddenForClient: 'La composition de l’équipe est réservée à l’agence.',
+    emptyTeam: 'Aucun membre d’équipe pour l’instant.',
+    emptyMilestones: 'Aucun jalon défini.',
+    backToList: '← Tous les projets',
+  },
+
+  projectStatus: {
+    PLANNED: 'Planifié',
+    IN_PROGRESS: 'En cours',
+    ON_HOLD: 'En pause',
+    COMPLETED: 'Terminé',
+    CANCELLED: 'Annulé',
+  },
+
+  milestoneStatus: {
+    NOT_STARTED: 'Non démarré',
+    IN_PROGRESS: 'En cours',
+    COMPLETED: 'Terminé',
   },
 
   users: {

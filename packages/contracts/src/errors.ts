@@ -57,6 +57,23 @@ export const ErrorCode = {
   CURRENT_PASSWORD_INCORRECT: 'CURRENT_PASSWORD_INCORRECT',
   /** ADR-0004 section 6 — an archived organisation accepts no new work. */
   CLIENT_ARCHIVED: 'CLIENT_ARCHIVED',
+  /** SRS §6.4 — the requested status is not reachable from the current one. */
+  INVALID_STATUS_TRANSITION: 'INVALID_STATUS_TRANSITION',
+  /** FR-019 — a project cannot end before it starts. */
+  END_DATE_BEFORE_START_DATE: 'END_DATE_BEFORE_START_DATE',
+  /** BR-24 — the owning PM must hold PROJECT_MANAGER or ADMINISTRATOR. */
+  INVALID_PROJECT_MANAGER: 'INVALID_PROJECT_MANAGER',
+  /** BR-23 — only an active user with role TEAM_MEMBER may join a team. */
+  INVALID_TEAM_MEMBER: 'INVALID_TEAM_MEMBER',
+  /** BR-23 — one membership per user per project. */
+  ALREADY_TEAM_MEMBER: 'ALREADY_TEAM_MEMBER',
+  /** P-9 — the embedded array is bounded, and that bound is what makes it safe. */
+  TEAM_LIMIT_REACHED: 'TEAM_LIMIT_REACHED',
+  MILESTONE_LIMIT_REACHED: 'MILESTONE_LIMIT_REACHED',
+  /** 06-DB §7.3 — `order` is unique within a project's milestones. */
+  MILESTONE_ORDER_TAKEN: 'MILESTONE_ORDER_TAKEN',
+  /** FR-027 — an archived project is read-only. */
+  PROJECT_ARCHIVED: 'PROJECT_ARCHIVED',
 
   // --- 500 -----------------------------------------------------------------
   INTERNAL_ERROR: 'INTERNAL_ERROR',

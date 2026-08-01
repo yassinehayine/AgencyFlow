@@ -35,6 +35,12 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.users.all, 'detail', id] as const,
   },
 
+  projects: {
+    all: ['projects'] as const,
+    list: (filters: object) => [...queryKeys.projects.all, 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.projects.all, 'detail', id] as const,
+  },
+
   clients: {
     all: ['clients'] as const,
     list: (filters: object) => [...queryKeys.clients.all, 'list', filters] as const,

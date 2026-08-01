@@ -48,6 +48,21 @@ export const fr = {
     cannotDeactivateSelf: 'Vous ne pouvez pas désactiver votre propre compte.',
   },
 
+  projects: {
+    notFound: 'Projet introuvable.',
+    endBeforeStart: 'La date de fin ne peut pas précéder la date de début.',
+    invalidStatusTransition: (from: string, to: string) =>
+      `Le passage du statut « ${from} » à « ${to} » n'est pas autorisé.`,
+    invalidProjectManager: 'Le responsable doit être un chef de projet ou un administrateur actif.',
+    invalidTeamMember: "Seul un membre d'équipe actif peut être ajouté à l'équipe du projet.",
+    alreadyTeamMember: 'Cette personne fait déjà partie de l’équipe du projet.',
+    teamLimitReached: 'L’équipe du projet a atteint sa taille maximale.',
+    milestoneLimitReached: 'Ce projet a atteint son nombre maximal de jalons.',
+    milestoneOrderTaken: 'Un autre jalon occupe déjà cette position dans la feuille de route.',
+    milestoneNotFound: 'Jalon introuvable.',
+    archived: 'Ce projet est archivé et ne peut plus être modifié.',
+  },
+
   clients: {
     notFound: 'Organisation cliente introuvable.',
     nameAlreadyExists: 'Une organisation cliente porte déjà ce nom.',

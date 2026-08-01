@@ -23,7 +23,7 @@ export function LoginPage() {
   const [isSubmitting, setSubmitting] = useState(false);
 
   /** Where the user was heading before being redirected here. */
-  const destination = (location.state as { from?: string } | null)?.from ?? '/status';
+  const destination = (location.state as { from?: string } | null)?.from ?? '/projects';
 
   if (isAuthenticated) {
     return <Navigate to={destination} replace />;

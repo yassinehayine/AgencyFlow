@@ -34,6 +34,24 @@ export class ClientsRepository extends ScopedRepository<ClientDocument> {
   }
 
   /**
+   * Resolves display names for a set of organisations in ONE query.
+   *
+   * Exists so a project list does not issue a lookup per row. Scope-aware like
+   * every other read: an organisation the caller cannot reach is simply absent
+   * from the map, and the caller renders a blank label rather than leaking a
+   * name across the BR-10 boundary.
+   */
+  async findNamesByIds(ids: Types.ObjectId[], scope: AccessScope): Promise<Map<string, string>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const clients = await this.findMany({ _id: { $in: ids } }, scope, {});
+
+    return new Map(clients.map((client) => [client._id.toString(), client.name]));
+  }
+
+  /**
    * Uniqueness pre-check, so the caller is told the name is taken rather than
    * receiving a bare conflict. Case-insensitive and anchored: "NewDev" and
    * "newdev" are the same organisation to a human, and two of them in a

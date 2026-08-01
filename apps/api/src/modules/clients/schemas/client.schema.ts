@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { CLIENT_LIMITS } from '@agencyflow/contracts';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Types, Schema as MongooseSchema } from 'mongoose';
 
 import { AuditableDocument, UNIQUE_WHEN_NOT_DELETED } from '../../../core/database/audit.schema';
 
@@ -45,7 +45,7 @@ export class Client extends AuditableDocument {
   @Prop({ type: Date, default: null })
   archivedAt?: Date | null;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   archivedBy?: Types.ObjectId;
 }
 

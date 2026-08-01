@@ -1,5 +1,5 @@
 import { Prop } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { Types, Schema as MongooseSchema } from 'mongoose';
 
 /**
  * Audit fields applied to every collection (06-Database-Design.md section 5.1).
@@ -13,17 +13,17 @@ import { Types } from 'mongoose';
  * stronger guarantee than a comment saying so (06-Database-Design section 5.4).
  */
 export abstract class AuditableDocument {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   createdBy?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   updatedBy?: Types.ObjectId;
 
   /** `null` means live. The single indicator of deletion (BR-30). */
   @Prop({ type: Date, default: null, index: true })
   deletedAt?: Date | null;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   deletedBy?: Types.ObjectId;
 
   createdAt?: Date;

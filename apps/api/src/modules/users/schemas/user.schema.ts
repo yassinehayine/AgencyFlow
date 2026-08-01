@@ -7,7 +7,7 @@ import {
   USERNAME_PATTERN,
   USER_LIMITS,
 } from '@agencyflow/contracts';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Types, Schema as MongooseSchema } from 'mongoose';
 
 import { AuditableDocument, UNIQUE_WHEN_NOT_DELETED } from '../../../core/database/audit.schema';
 
@@ -68,7 +68,7 @@ export class User extends AuditableDocument {
   skill?: Skill;
 
   /** The BR-10 anchor for a Client Contact. Immutable once set (A-08). */
-  @Prop({ type: Types.ObjectId, ref: 'Client', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Client', required: false })
   clientId?: Types.ObjectId;
 
   /**

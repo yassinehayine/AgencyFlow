@@ -4,6 +4,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
 import { RequireAuth, RequireRole } from '../components/shared/RequireAuth';
 import { ClientsPage } from '../pages/ClientsPage';
+import { ProjectDetailPage } from '../pages/ProjectDetailPage';
+import { ProjectsPage } from '../pages/ProjectsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { SystemStatusPage } from '../pages/SystemStatusPage';
 import { UsersPage } from '../pages/UsersPage';
@@ -29,7 +31,13 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <Navigate to="/status" replace /> },
+          // Projects is the landing page: it is the only screen every role
+          // can use, and each one lands on a legitimately different list
+          // (FR-025).
+          { index: true, element: <Navigate to="/projects" replace /> },
+
+          { path: '/projects', element: <ProjectsPage /> },
+          { path: '/projects/:id', element: <ProjectDetailPage /> },
 
           { path: '/status', element: <SystemStatusPage /> },
 

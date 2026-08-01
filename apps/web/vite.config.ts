@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -26,5 +27,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+  },
+
+  /**
+   * Vitest rather than Jest, and not for novelty: it reads this same config,
+   * so the tests resolve modules exactly as the application does. A separate
+   * Jest transform pipeline would be a second definition of "how this project
+   * builds" — the kind that passes while the real build fails.
+   *
+   * The API keeps Jest, which is what @nestjs/testing expects. Two runners is
+   * the honest answer when two runtimes have different needs.
+   */
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    css: false,
   },
 });

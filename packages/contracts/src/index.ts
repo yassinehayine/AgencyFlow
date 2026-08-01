@@ -18,3 +18,4 @@ export * from './auth.js';
 export * from './errors.js';
 export * from './users.js';
 export * from './clients.js';
+export * from './projects.js';

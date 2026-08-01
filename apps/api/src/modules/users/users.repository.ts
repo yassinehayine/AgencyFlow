@@ -146,6 +146,24 @@ export class UsersRepository
       .exec();
   }
 
+  /**
+   * Resolves several users in ONE query, for display alongside something that
+   * references them — a project's manager and its team roster.
+   *
+   * Scope-aware: a user the caller may not see is absent from the map rather
+   * than returned. A Client Contact's scope narrows this to themselves, which
+   * is why BR-28 holds even if a future caller forgets to omit the roster.
+   */
+  async findByIds(ids: Types.ObjectId[], scope: AccessScope): Promise<Map<string, UserDocument>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const users = await this.findMany({ _id: { $in: ids } }, scope, {});
+
+    return new Map(users.map((user) => [user._id.toString(), user]));
+  }
+
   /** Contacts of one organisation (FR-017). */
   async findContactsOfClient(clientId: string, scope: AccessScope): Promise<UserDocument[]> {
     return this.findMany(
