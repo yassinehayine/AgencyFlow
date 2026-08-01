@@ -11,6 +11,7 @@ import { StorageModule } from './core/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { HealthModule } from './modules/health/health.module';
+import { AuthenticatedUserLookupModule } from './modules/users/authenticated-user-lookup.module';
 import { UsersModule } from './modules/users/users.module';
 
 /**
@@ -43,6 +44,12 @@ import { UsersModule } from './modules/users/users.module';
     // Business services publish facts; Activity and Notification listeners
     // subscribe, so adding an email listener later touches no business code.
     EventEmitterModule.forRoot({ global: true, wildcard: false }),
+
+    // The one inverted dependency: core's JwtStrategy needs to re-read the
+    // acting user on every request (ADR-0005), and core may not import a
+    // feature. This module is the single wire between the port and its
+    // implementation.
+    AuthenticatedUserLookupModule,
 
     // --- Features ---------------------------------------------------------
     HealthModule,

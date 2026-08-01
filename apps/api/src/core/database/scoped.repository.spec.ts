@@ -44,19 +44,13 @@ class SelfOnlyRepository extends ScopedRepository<TestDoc> {
   }
 }
 
-const claims = (role: Role, clientId?: string) => ({
-  sub: 'user-1',
-  role,
-  clientId,
-  iat: 0,
-  exp: 0,
-});
+const scopeOf = (role: Role, clientId?: string) => ({ userId: 'user-1', role, clientId });
 
 describe('ScopedRepository.buildFilter', () => {
   describe('soft delete', () => {
     it('excludes deleted records by default', () => {
       const repository = new OrganisationScopedRepository();
-      const filter = repository.expose(AccessScope.fromClaims(claims(Role.ADMINISTRATOR)));
+      const filter = repository.expose(AccessScope.forUser(scopeOf(Role.ADMINISTRATOR)));
 
       expect(filter).toEqual({ deletedAt: null });
     });
@@ -64,7 +58,7 @@ describe('ScopedRepository.buildFilter', () => {
     it('includes them only when asked by name', () => {
       const repository = new OrganisationScopedRepository();
       const filter = repository.expose(
-        AccessScope.fromClaims(claims(Role.ADMINISTRATOR)),
+        AccessScope.forUser(scopeOf(Role.ADMINISTRATOR)),
         undefined,
         true,
       );
@@ -76,21 +70,16 @@ describe('ScopedRepository.buildFilter', () => {
   describe('scope narrowing', () => {
     it('adds the organisation constraint for a client contact', () => {
       const repository = new OrganisationScopedRepository();
-      const filter = repository.expose(
-        AccessScope.fromClaims(claims(Role.CLIENT_CONTACT, 'org-1')),
-      );
+      const filter = repository.expose(AccessScope.forUser(scopeOf(Role.CLIENT_CONTACT, 'org-1')));
 
       expect(filter).toEqual({ $and: [{ deletedAt: null }, { clientId: 'org-1' }] });
     });
 
     it('cannot be widened by a caller filter naming the same field', () => {
       const repository = new OrganisationScopedRepository();
-      const filter = repository.expose(
-        AccessScope.fromClaims(claims(Role.CLIENT_CONTACT, 'org-1')),
-        {
-          clientId: 'org-2',
-        },
-      );
+      const filter = repository.expose(AccessScope.forUser(scopeOf(Role.CLIENT_CONTACT, 'org-1')), {
+        clientId: 'org-2',
+      });
 
       // Both clauses survive, so the query asks for a document belonging to
       // two organisations at once and matches nothing. Under an object spread
@@ -110,12 +99,9 @@ describe('ScopedRepository.buildFilter', () => {
      */
     it('does not let a scope overwrite the id being looked up', () => {
       const repository = new SelfOnlyRepository();
-      const filter = repository.expose(
-        AccessScope.fromClaims(claims(Role.CLIENT_CONTACT, 'org-1')),
-        {
-          _id: 'someone-else',
-        },
-      );
+      const filter = repository.expose(AccessScope.forUser(scopeOf(Role.CLIENT_CONTACT, 'org-1')), {
+        _id: 'someone-else',
+      });
 
       expect(filter).toEqual({
         $and: [{ _id: 'someone-else' }, { deletedAt: null }, { _id: 'user-1' }],
@@ -128,7 +114,7 @@ describe('ScopedRepository.buildFilter', () => {
     it('returns a bare object rather than an empty $and', () => {
       const repository = new OrganisationScopedRepository();
       const filter = repository.expose(
-        AccessScope.fromClaims(claims(Role.ADMINISTRATOR)),
+        AccessScope.forUser(scopeOf(Role.ADMINISTRATOR)),
         undefined,
         true,
       );
@@ -139,7 +125,7 @@ describe('ScopedRepository.buildFilter', () => {
 
     it('does not wrap a single clause', () => {
       const repository = new OrganisationScopedRepository();
-      const filter = repository.expose(AccessScope.fromClaims(claims(Role.ADMINISTRATOR)));
+      const filter = repository.expose(AccessScope.forUser(scopeOf(Role.ADMINISTRATOR)));
 
       expect(filter).toEqual({ deletedAt: null });
     });

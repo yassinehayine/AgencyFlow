@@ -6,9 +6,16 @@ import { Model, Types, type FilterQuery } from 'mongoose';
 import { AccessScope } from '../../core/authorization/access-scope';
 import { ScopedRepository } from '../../core/database/scoped.repository';
 import { User, type UserDocument } from './schemas/user.schema';
+import type {
+  AuthenticatedUserLookup,
+  AuthenticatedUserRecord,
+} from '../../core/authorization/authenticated-user.port';
 
 @Injectable()
-export class UsersRepository extends ScopedRepository<UserDocument> {
+export class UsersRepository
+  extends ScopedRepository<UserDocument>
+  implements AuthenticatedUserLookup
+{
   constructor(@InjectModel(User.name) model: Model<UserDocument>) {
     super(model);
   }
@@ -63,6 +70,46 @@ export class UsersRepository extends ScopedRepository<UserDocument> {
     }
 
     return this.model.findOne({ _id: id, deletedAt: null }).select('+passwordHash').exec();
+  }
+
+  /**
+   * Implements `AuthenticatedUserLookup` (ADR-0005) — called once per
+   * authenticated request to rebuild the AccessScope from current data.
+   *
+   * The three conditions are the whole authorisation gate:
+   *   `_id`        the identity the signed token names
+   *   `isActive`   a deactivated account stops working immediately (FR-010)
+   *   `deletedAt`  a deleted one likewise (BR-30)
+   *
+   * All three failures return `null`, so a caller cannot tell a deactivated
+   * account from a deleted one or from an id that never existed.
+   *
+   * No scope parameter, and that is not an oversight: this call is what
+   * PRODUCES the scope. Requiring one would be circular. It is confined to
+   * this method and the two `ForAuthentication` lookups above, which are the
+   * only unscoped reads in the system.
+   *
+   * `passwordHash` is `select: false`, so it is absent here without asking.
+   */
+  async findActiveById(userId: string): Promise<AuthenticatedUserRecord | null> {
+    if (!Types.ObjectId.isValid(userId)) {
+      return null;
+    }
+
+    const user = await this.model
+      .findOne({ _id: userId, isActive: true, deletedAt: null })
+      .select('_id role clientId')
+      .exec();
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      userId: user._id.toString(),
+      role: user.role,
+      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
+    };
   }
 
   /**

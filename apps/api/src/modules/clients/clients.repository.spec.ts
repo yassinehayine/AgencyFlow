@@ -22,13 +22,7 @@ function build(): TestableClientsRepository {
 }
 
 const scopeFor = (role: Role, clientId?: string) =>
-  AccessScope.fromClaims({
-    sub: new Types.ObjectId().toString(),
-    role,
-    clientId,
-    iat: 0,
-    exp: 0,
-  });
+  AccessScope.forUser({ userId: new Types.ObjectId().toString(), role, clientId });
 
 describe('ClientsRepository scope', () => {
   it.each([Role.ADMINISTRATOR, Role.PROJECT_MANAGER, Role.TEAM_MEMBER])(

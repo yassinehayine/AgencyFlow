@@ -21,11 +21,9 @@ type RepositoryDouble = {
   [K in keyof UsersRepository]?: jest.Mock;
 };
 
-const adminScope = AccessScope.fromClaims({
-  sub: new Types.ObjectId().toString(),
+const adminScope = AccessScope.forUser({
+  userId: new Types.ObjectId().toString(),
   role: Role.ADMINISTRATOR,
-  iat: 0,
-  exp: 0,
 });
 
 function makeUser(overrides: Partial<UserDocument> = {}): UserDocument {
