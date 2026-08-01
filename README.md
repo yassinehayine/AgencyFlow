@@ -84,12 +84,37 @@ Not optional. Multi-document transactions require a replica set, and the cascadi
 | `npm test` | Run tests |
 | `npm run lint` / `npm run format` | Lint / format |
 | `npm run db:up` / `npm run db:down` | Start / stop MongoDB |
+| `npm run seed:admin --workspace @agencyflow/api` | Create the bootstrap Administrator (see below) |
+| `npm run verify:storage --workspace @agencyflow/api` | Live Cloudinary round-trip check |
+
+### Creating the first account
+
+There is no registration endpoint, by design: every account exists because an Administrator created it (FR-007, BR-11). A fresh database therefore has nobody who can log in. `seed:admin` is the only way to create the first Administrator, and it is deliberately outside the HTTP surface — nothing reachable over the network can mint one.
+
+```bash
+npm run build --workspace @agencyflow/api
+SEED_ADMIN_NAME="Prénom Nom" SEED_ADMIN_USERNAME="prenom.nom" \
+SEED_ADMIN_EMAIL="admin@example.ma" SEED_ADMIN_PASSWORD="at-least-8-chars" \
+npm run seed:admin --workspace @agencyflow/api
+```
+
+It is idempotent: if an active Administrator already exists it changes nothing, so it is safe in a deploy hook.
 
 ## Quality gates
 
 Every push and pull request runs: format → lint (zero warnings) → type-check → tests → build → dependency audit. With a solo developer there is no second reviewer, so these checks *are* the review. A red pipeline is never merged and never disabled.
 
 Locally, husky enforces the same standards: `lint-staged` on pre-commit, `commitlint` on commit-msg. Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
+
+### Accepted advisories
+
+`npm audit` reports one open advisory. It is recorded here rather than silenced, so the decision is reviewable and gets revisited.
+
+| Advisory | Package | Assessment |
+|---|---|---|
+| [GHSA-qwww-vcr4-c8h2](https://github.com/advisories/GHSA-qwww-vcr4-c8h2) — RSC-mode CSRF bypass | `react-router` ≥ 7.12 | **Not reachable here.** It affects React Router's RSC mode and server actions. This client is a static SPA on Vercel with no server runtime, no RSC, and no router actions. |
+
+Every alternative version is worse, which is why the fix is not simply to move: `npm audit fix` downgrades to 7.11.0, which carries **fourteen** advisories including XSS and an RCE. Staying on the latest release with one unreachable advisory is the lowest-risk position available. It is removed the moment a patched release exists.
 
 ## Documentation
 
