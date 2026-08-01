@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 
+import { CommonModule } from './common/common.module';
 import { AuthorizationModule } from './core/authorization/authorization.module';
 import { AppConfigModule } from './core/config/app-config.module';
 import { AppConfigService } from './core/config/app-config.service';
@@ -30,6 +31,9 @@ import { HealthModule } from './modules/health/health.module';
     }),
     AuthorizationModule,
     StorageModule,
+    // Correlation ids and the single error envelope. Imported with the core
+    // modules because every feature depends on it and it depends on none.
+    CommonModule,
     // In-process domain events (05-Software-Architecture.md section 9).
     // Business services publish facts; Activity and Notification listeners
     // subscribe, so adding an email listener later touches no business code.

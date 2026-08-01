@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { validationExceptionFactory } from './common/pipes/validation-exception.factory';
 import { AppConfigService } from './core/config/app-config.service';
 
 async function bootstrap(): Promise<void> {
@@ -34,6 +35,10 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: true },
+      // Field-level failures reach the client as `details[{ field, message }]`
+      // instead of Nest's flat string array, so a form can mark the offending
+      // input rather than printing a paragraph above it.
+      exceptionFactory: validationExceptionFactory,
     }),
   );
 
