@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { HealthModule } from './modules/health/health.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 import { AuthenticatedUserLookupModule } from './modules/users/authenticated-user-lookup.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -58,6 +59,7 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     ClientsModule,
     ProjectsModule,
+    TasksModule,
   ],
 })
 export class AppModule {}

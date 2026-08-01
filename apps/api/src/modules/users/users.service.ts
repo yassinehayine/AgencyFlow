@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ErrorCode, Role, Skill } from '@agencyflow/contracts';
 import type { PaginatedResponse, UserDetail, UserSummary } from '@agencyflow/contracts';
 import { Types, type FilterQuery } from 'mongoose';
@@ -14,6 +14,7 @@ import {
 import { fr } from '../../i18n/fr';
 import { toUserDetail, toUserSummary } from './users.mapper';
 import { UsersRepository } from './users.repository';
+import { OPEN_TASKS_LOOKUP, type OpenTasksLookup } from './open-tasks.port';
 import type { CreateClientContactDto, CreateUserDto } from './dto/create-user.dto';
 import type { ChangePasswordDto, ResetPasswordDto, UpdateUserDto } from './dto/update-user.dto';
 import type { UserListQueryDto } from './dto/user-list-query.dto';
@@ -31,6 +32,7 @@ export class UsersService {
   constructor(
     private readonly repository: UsersRepository,
     private readonly passwords: PasswordService,
+    @Inject(OPEN_TASKS_LOOKUP) private readonly openTasks: OpenTasksLookup,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -212,6 +214,88 @@ export class UsersService {
       { $set: { passwordHash: await this.passwords.hash(dto.newPassword) } },
       scope,
     );
+  }
+
+  /**
+   * FR-010, US-008 — deactivate a user.
+   *
+   * Deferred out of Slice 2 because its acceptance criterion is BR-32, which
+   * needs the `tasks` collection. It is enforceable now, through a port that
+   * `TasksModule` satisfies — `UsersModule` still depends on nothing.
+   *
+   * Three refusals, each for a different reason:
+   *
+   *   BR-32  outstanding tasks. The blocking tasks are RETURNED, not just
+   *          counted, because listing them is what turns a dead end into a
+   *          next step: the Administrator can go and reassign them.
+   *   A-10   the last active Administrator. Losing it locks everyone out of
+   *          user administration permanently, with no route back in except
+   *          the seed script.
+   *   self   deactivating yourself is the same lock-out by a shorter path.
+   *
+   * Deactivation is NOT deletion (BR-30). Every record the user authored stays
+   * intact and attributed; they simply can no longer authenticate — which,
+   * since ADR-0005, takes effect on their very next request.
+   */
+  async deactivate(id: string, scope: AccessScope): Promise<UserDetail> {
+    const user = await this.getOrFail(id, scope);
+
+    if (id === scope.userId) {
+      throw new BusinessRuleViolationException(
+        ErrorCode.LAST_ACTIVE_ADMINISTRATOR,
+        fr.users.cannotDeactivateSelf,
+      );
+    }
+
+    if (!user.isActive) {
+      // Idempotent: an already-deactivated account needs no second refusal.
+      return toUserDetail(user);
+    }
+
+    if (user.role === Role.ADMINISTRATOR) {
+      const remaining = await this.repository.countActiveAdministrators();
+
+      if (remaining <= 1) {
+        throw new BusinessRuleViolationException(
+          ErrorCode.LAST_ACTIVE_ADMINISTRATOR,
+          fr.users.lastActiveAdministrator,
+        );
+      }
+    }
+
+    const blocking = await this.openTasks.findOpenTasksForAssignee(user._id);
+
+    if (blocking.length > 0) {
+      throw new BusinessRuleViolationException(
+        ErrorCode.USER_HAS_OPEN_TASKS,
+        fr.users.hasOpenTasks,
+        blocking.map((task) => ({
+          field: `task:${task.id}`,
+          message: `${task.title} — ${task.projectName}`,
+        })),
+      );
+    }
+
+    const updated = await this.repository.updateById(id, { $set: { isActive: false } }, scope);
+
+    if (!updated) {
+      throw new ResourceNotFoundException(fr.users.notFound);
+    }
+
+    return toUserDetail(updated);
+  }
+
+  /** Re-enabling an account carries none of BR-32's constraints. */
+  async activate(id: string, scope: AccessScope): Promise<UserDetail> {
+    await this.getOrFail(id, scope);
+
+    const updated = await this.repository.updateById(id, { $set: { isActive: true } }, scope);
+
+    if (!updated) {
+      throw new ResourceNotFoundException(fr.users.notFound);
+    }
+
+    return toUserDetail(updated);
   }
 
   // ---------------------------------------------------------------------

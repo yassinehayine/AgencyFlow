@@ -162,6 +162,36 @@ export abstract class ScopedRepository<TDocument> {
   }
 
   /**
+   * Updates a document IN an embedded array, selected by `arrayFilters`.
+   *
+   * Separate from `updateById` because positional array updates are the one
+   * place a caller must think about which element they are touching. Keeping
+   * it distinct means `updateById` stays the simple, safe default, and the
+   * riskier operation has to be named.
+   *
+   * The scope filter still applies, so an embedded edit cannot reach a
+   * document the caller could not have read.
+   */
+  async updateEmbedded(
+    id: string,
+    update: UpdateQuery<TDocument>,
+    arrayFilters: Record<string, unknown>[],
+    scope: AccessScope,
+  ): Promise<TDocument | null> {
+    if (!this.isValidId(id)) {
+      return null;
+    }
+
+    return this.model
+      .findOneAndUpdate(
+        this.buildFilter(scope, { _id: id } as FilterQuery<TDocument>),
+        this.withUpdateAudit(update, scope),
+        { new: true, arrayFilters },
+      )
+      .exec();
+  }
+
+  /**
    * Merges `updatedBy` into the caller's `$set`.
    *
    * Applied here rather than at each call site: an update that forgets to

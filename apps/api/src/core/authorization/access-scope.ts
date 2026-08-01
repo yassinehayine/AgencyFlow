@@ -29,6 +29,16 @@ export class AccessScope {
     readonly userId: string,
     readonly role: Role,
     readonly clientId?: string,
+    /**
+     * Ids of the projects this scope can reach, resolved lazily.
+     *
+     * `undefined` means NOT YET RESOLVED — not "none". Collections that hang
+     * off a project (tasks, deliverables, files) carry no `clientId` of their
+     * own, so they can only be scoped once this is known, and they must treat
+     * `undefined` as "match nothing" rather than "match everything"
+     * (08-Backend-Design §3.3).
+     */
+    readonly accessibleProjectIds?: readonly string[],
   ) {}
 
   /**
@@ -66,6 +76,21 @@ export class AccessScope {
    */
   get actorId(): string | null {
     return this.userId === SYSTEM_ACTOR_ID ? null : this.userId;
+  }
+
+  /**
+   * Returns a NEW scope carrying the resolved project ids.
+   *
+   * Immutable on purpose. Mutating the scope in place would mean a value that
+   * is safe when read at one point in a request and wider when read at
+   * another — and the whole reason `AccessScope` is a value object is that it
+   * cannot change under anyone's feet.
+   *
+   * An Administrator is left unresolved: they are unrestricted, so a list of
+   * every project id in the system would be an expensive way to say `{}`.
+   */
+  withAccessibleProjects(projectIds: readonly string[]): AccessScope {
+    return new AccessScope(this.userId, this.role, this.clientId, projectIds);
   }
 
   isAdministrator(): boolean {

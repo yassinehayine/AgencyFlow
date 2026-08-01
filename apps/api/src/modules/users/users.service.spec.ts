@@ -1,4 +1,5 @@
 import { ErrorCode, Role, Skill } from '@agencyflow/contracts';
+import type { OpenTaskReference } from '@agencyflow/contracts';
 import { Types } from 'mongoose';
 
 import { AccessScope } from '../../core/authorization/access-scope';
@@ -6,6 +7,7 @@ import { PasswordService } from '../../core/security/password.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { UsersService } from './users.service';
 import type { UsersRepository } from './users.repository';
+import type { OpenTasksLookup } from './open-tasks.port';
 import type { UserDocument } from './schemas/user.schema';
 
 /**
@@ -41,18 +43,24 @@ function makeUser(overrides: Partial<UserDocument> = {}): UserDocument {
   } as UserDocument;
 }
 
-function buildService(repository: RepositoryDouble) {
+function buildService(repository: RepositoryDouble, openTasks: OpenTaskReference[] = []) {
   const passwords = {
     hash: jest.fn().mockResolvedValue('hashed'),
     verify: jest.fn().mockResolvedValue(true),
   };
 
+  // The BR-32 port. Satisfied by TasksModule in the running application; a
+  // double here, because what needs proving is that UsersService REFUSES when
+  // the answer is non-empty, not how TasksModule computes it.
+  const tasks = { findOpenTasksForAssignee: jest.fn().mockResolvedValue(openTasks) };
+
   const service = new UsersService(
     repository as unknown as UsersRepository,
     passwords as unknown as PasswordService,
+    tasks as unknown as OpenTasksLookup,
   );
 
-  return { service, passwords };
+  return { service, passwords, tasks };
 }
 
 /** Asserts the domain code, not just that something was thrown. */
@@ -348,6 +356,93 @@ describe('UsersService', () => {
       expect(filter.$or[0].name.source).toBe('a\\.\\*b');
       expect(filter.$or[0].name.test('axxb')).toBe(false);
       expect(filter.$or[0].name.test('a.*b')).toBe(true);
+    });
+  });
+
+  describe('deactivate — US-008, deferred out of Slice 2 until tasks existed', () => {
+    /**
+     * BR-32. The refusal must NAME the blocking tasks, not merely count them:
+     * an Administrator who is told "this user has open tasks" and nothing else
+     * has to go hunting for them.
+     */
+    it('refuses while the user holds open tasks, and lists them', async () => {
+      const user = makeUser({ isActive: true });
+      const blocking: OpenTaskReference[] = [
+        { id: 't1', title: 'Maquette page accueil', projectId: 'p1', projectName: 'Refonte' },
+      ];
+      const { service } = buildService({ findById: jest.fn().mockResolvedValue(user) }, blocking);
+
+      const promise = service.deactivate(user._id.toString(), adminScope);
+
+      await expect(promise).rejects.toBeInstanceOf(DomainException);
+      await promise.catch((error: DomainException) => {
+        expect(error.code).toBe(ErrorCode.USER_HAS_OPEN_TASKS);
+        expect(error.details).toHaveLength(1);
+        expect(error.details?.[0].message).toContain('Maquette page accueil');
+        expect(error.details?.[0].message).toContain('Refonte');
+      });
+    });
+
+    it('deactivates when nothing is outstanding', async () => {
+      const user = makeUser({ isActive: true });
+      const updateById = jest.fn().mockResolvedValue(makeUser({ isActive: false }));
+      const { service } = buildService({
+        findById: jest.fn().mockResolvedValue(user),
+        updateById,
+      });
+
+      const result = await service.deactivate(user._id.toString(), adminScope);
+
+      expect(updateById.mock.calls[0][1]).toEqual({ $set: { isActive: false } });
+      expect(result.isActive).toBe(false);
+    });
+
+    /** A-10 — losing the last Administrator locks everyone out permanently. */
+    it('refuses to deactivate the last active Administrator', async () => {
+      const admin = makeUser({ role: Role.ADMINISTRATOR, skill: undefined, isActive: true });
+      const { service } = buildService({
+        findById: jest.fn().mockResolvedValue(admin),
+        countActiveAdministrators: jest.fn().mockResolvedValue(1),
+      });
+
+      await expectDomainCode(
+        service.deactivate(admin._id.toString(), adminScope),
+        ErrorCode.LAST_ACTIVE_ADMINISTRATOR,
+      );
+    });
+
+    it('allows it when another Administrator remains', async () => {
+      const admin = makeUser({ role: Role.ADMINISTRATOR, skill: undefined, isActive: true });
+      const { service } = buildService({
+        findById: jest.fn().mockResolvedValue(admin),
+        countActiveAdministrators: jest.fn().mockResolvedValue(2),
+        updateById: jest.fn().mockResolvedValue(makeUser({ isActive: false })),
+      });
+
+      await expect(service.deactivate(admin._id.toString(), adminScope)).resolves.toBeDefined();
+    });
+
+    it('refuses self-deactivation, which is the same lock-out by a shorter path', async () => {
+      const self = makeUser({ _id: new Types.ObjectId(adminScope.userId) });
+      const { service } = buildService({ findById: jest.fn().mockResolvedValue(self) });
+
+      await expectDomainCode(
+        service.deactivate(adminScope.userId, adminScope),
+        ErrorCode.LAST_ACTIVE_ADMINISTRATOR,
+      );
+    });
+
+    it('is idempotent on an already-deactivated account', async () => {
+      const user = makeUser({ isActive: false });
+      const updateById = jest.fn();
+      const { service, tasks } = buildService({
+        findById: jest.fn().mockResolvedValue(user),
+        updateById,
+      });
+
+      await expect(service.deactivate(user._id.toString(), adminScope)).resolves.toBeDefined();
+      expect(updateById).not.toHaveBeenCalled();
+      expect(tasks.findOpenTasksForAssignee).not.toHaveBeenCalled();
     });
   });
 });

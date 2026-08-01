@@ -74,6 +74,20 @@ export const ErrorCode = {
   MILESTONE_ORDER_TAKEN: 'MILESTONE_ORDER_TAKEN',
   /** FR-027 — an archived project is read-only. */
   PROJECT_ARCHIVED: 'PROJECT_ARCHIVED',
+  /** BR-04 — only a Project Manager or Administrator may complete a task. */
+  TASK_COMPLETION_FORBIDDEN: 'TASK_COMPLETION_FORBIDDEN',
+  /** BR-26 — a Team Member may modify only tasks assigned to them. */
+  TASK_NOT_ASSIGNED_TO_YOU: 'TASK_NOT_ASSIGNED_TO_YOU',
+  /** BR-22, CIR-6 — a blocked task must carry a non-empty reason. */
+  BLOCKED_REASON_REQUIRED: 'BLOCKED_REASON_REQUIRED',
+  /** BR-23 — the assignee must already be on the project team. */
+  ASSIGNEE_NOT_ON_TEAM: 'ASSIGNEE_NOT_ON_TEAM',
+  /** 06-DB §9 — the milestone must belong to the task's project. */
+  MILESTONE_NOT_IN_PROJECT: 'MILESTONE_NOT_IN_PROJECT',
+  /** FR-034 — a milestone with outstanding tasks cannot be deleted. */
+  MILESTONE_HAS_OPEN_TASKS: 'MILESTONE_HAS_OPEN_TASKS',
+  /** FR-024 — a member with outstanding tasks cannot be removed from a team. */
+  MEMBER_HAS_OPEN_TASKS: 'MEMBER_HAS_OPEN_TASKS',
 
   // --- 500 -----------------------------------------------------------------
   INTERNAL_ERROR: 'INTERNAL_ERROR',

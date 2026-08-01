@@ -61,6 +61,10 @@ export default tseslint.config(
         Buffer: 'readonly',
         __dirname: 'readonly',
         __filename: 'readonly',
+        // Node 18+ globals. The scripts talk to a running instance over HTTP,
+        // which needs no dependency any more.
+        fetch: 'readonly',
+        URLSearchParams: 'readonly',
       },
     },
     rules: {
