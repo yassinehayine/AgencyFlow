@@ -6,8 +6,10 @@ import { CommonModule } from './common/common.module';
 import { AuthorizationModule } from './core/authorization/authorization.module';
 import { AppConfigModule } from './core/config/app-config.module';
 import { AppConfigService } from './core/config/app-config.service';
+import { SecurityModule } from './core/security/security.module';
 import { StorageModule } from './core/storage/storage.module';
 import { HealthModule } from './modules/health/health.module';
+import { UsersModule } from './modules/users/users.module';
 
 /**
  * Application composition root.
@@ -30,6 +32,7 @@ import { HealthModule } from './modules/health/health.module';
       }),
     }),
     AuthorizationModule,
+    SecurityModule,
     StorageModule,
     // Correlation ids and the single error envelope. Imported with the core
     // modules because every feature depends on it and it depends on none.
@@ -41,6 +44,7 @@ import { HealthModule } from './modules/health/health.module';
 
     // --- Features ---------------------------------------------------------
     HealthModule,
+    UsersModule,
   ],
 })
 export class AppModule {}
