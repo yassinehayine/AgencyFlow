@@ -82,6 +82,55 @@ export const fr = {
     backToList: '← Tous les projets',
   },
 
+  tasks: {
+    title: 'Tâches',
+    createTitle: 'Nouvelle tâche',
+    taskTitle: 'Intitulé',
+    description: 'Description',
+    milestone: 'Jalon',
+    assignee: 'Assigné à',
+    dueDate: 'Échéance',
+    status: 'Statut',
+    empty: 'Aucune tâche pour ce projet.',
+    selectMilestone: 'Sélectionner un jalon',
+    selectAssignee: 'Sélectionner un membre de l’équipe',
+    milestoneRequiredFirst: 'Créez d’abord un jalon : une tâche appartient toujours à un jalon.',
+    teamRequiredFirst:
+      'Ajoutez d’abord un membre à l’équipe : une tâche doit être assignée à quelqu’un du projet.',
+    blockedBecause: 'Bloquée :',
+    blockReasonPrompt: 'Motif du blocage',
+    // The BR-04 wording matters: it explains WHY rather than only refusing.
+    completionIsManagerOnly: 'La validation d’une tâche revient au chef de projet.',
+  },
+
+  taskCommands: {
+    start: 'Démarrer',
+    'submit-review': 'Envoyer en revue',
+    done: 'Valider',
+    return: 'Renvoyer au travail',
+    block: 'Bloquer',
+    unblock: 'Débloquer',
+    cancel: 'Annuler la tâche',
+  },
+
+  taskStatus: {
+    TODO: 'À faire',
+    IN_PROGRESS: 'En cours',
+    IN_REVIEW: 'En revue',
+    DONE: 'Terminée',
+    BLOCKED: 'Bloquée',
+    CANCELLED: 'Annulée',
+  },
+
+  milestones: {
+    createTitle: 'Nouveau jalon',
+    name: 'Nom du jalon',
+    order: 'Position',
+    dueDate: 'Échéance',
+    add: 'Ajouter le jalon',
+    remove: 'Supprimer',
+  },
+
   projectStatus: {
     PLANNED: 'Planifié',
     IN_PROGRESS: 'En cours',
