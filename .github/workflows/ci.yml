@@ -1,0 +1,71 @@
+name: CI
+
+# Quality gates from 00-Project-Foundation.md section 14.4.
+#
+# With a solo developer there is no second reviewer, so these checks ARE the
+# review (section 4.5). A red pipeline is never merged and never disabled:
+# turning off a failing check converts a known problem into an unknown one.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # `npm ci` installs exactly the lockfile, so CI cannot silently resolve
+      # a different dependency tree than the developer machine.
+      - name: Install dependencies
+        run: npm ci
+
+      # contracts must be built first: both applications import its compiled
+      # output, and npm workspaces does not guarantee topological ordering.
+      - name: Build shared contracts
+        run: npm run build --workspace @agencyflow/contracts
+
+      # Gates run cheapest first so an obvious failure reports in seconds
+      # rather than after a full build.
+      - name: Gate 1 - Format check
+        run: npx prettier --check .
+
+      - name: Gate 2 - Lint (zero warnings)
+        run: npx eslint . --max-warnings=0
+
+      - name: Gate 3 - Type check
+        run: npm run typecheck
+
+      - name: Gate 4 - Tests
+        run: npm run test
+
+      - name: Gate 5 - Build
+        run: |
+          npm run build --workspace @agencyflow/api
+          npm run build --workspace @agencyflow/web
+
+      # Advisories in the dependency tree are surfaced but do not block a
+      # feature branch. This becomes blocking before delivery (NFR-26).
+      - name: Gate 6 - Dependency audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
