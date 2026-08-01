@@ -27,3 +27,6 @@ Thumbs.db
 
 # Local MongoDB data (docker-compose)
 .docker-data/
+
+# Platform CLI scratch directories
+.vercel/

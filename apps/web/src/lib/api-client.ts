@@ -6,7 +6,20 @@ import type { ApiErrorResponse } from '@agencyflow/contracts';
  * there is exactly one place that attaches the token and normalises errors.
  */
 
-const API_BASE = '/api/v1';
+/**
+ * Origin of the API.
+ *
+ * Empty in development, where the Vite proxy makes the API same-origin. In
+ * production Vercel serves the client and Render serves the API, so a relative
+ * path would resolve against the Vercel domain and return `index.html` instead
+ * of JSON — the failure looks like a JSON parse error and hides its own cause.
+ *
+ * The trailing slash is stripped so that both `https://host` and
+ * `https://host/` produce the same request URL.
+ */
+const API_ORIGIN = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+
+const API_BASE = `${API_ORIGIN}/api/v1`;
 
 /** Thrown for any non-2xx response, carrying the API's error envelope. */
 export class ApiError extends Error {
@@ -33,17 +46,20 @@ export function getAccessToken(): string | null {
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
-  /** Bypasses the versioned prefix, for unversioned probes such as /health. */
-  absolutePath?: boolean;
+  /**
+   * Drops the `/api/v1` prefix while keeping the API origin, for the
+   * deliberately unversioned probes such as `/health`.
+   */
+  unversioned?: boolean;
 }
 
 export async function apiRequest<TResponse>(
   path: string,
   options: RequestOptions = {},
 ): Promise<TResponse> {
-  const { body, absolutePath, headers, ...rest } = options;
+  const { body, unversioned, headers, ...rest } = options;
 
-  const response = await fetch(`${absolutePath ? '' : API_BASE}${path}`, {
+  const response = await fetch(`${unversioned ? API_ORIGIN : API_BASE}${path}`, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
