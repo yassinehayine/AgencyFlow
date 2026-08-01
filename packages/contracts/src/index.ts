@@ -20,3 +20,4 @@ export * from './users.js';
 export * from './clients.js';
 export * from './projects.js';
 export * from './tasks.js';
+export * from './files.js';
