@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ProjectStatus } from '@agencyflow/contracts';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Types, Schema as MongooseSchema } from 'mongoose';
 
 import { AuditableDocument } from '../../../core/database/audit.schema';
 
@@ -27,13 +27,13 @@ export const MAX_MILESTONES = 50;
 @Schema({ _id: false })
 export class TeamMember {
   /** Unique within the array. Role must be TEAM_MEMBER (BR-23). */
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId!: Types.ObjectId;
 
   @Prop({ type: Date, required: true, default: () => new Date() })
   addedAt!: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   addedById?: Types.ObjectId;
 }
 
@@ -48,7 +48,7 @@ export const TeamMemberSchema = SchemaFactory.createForClass(TeamMember);
  */
 @Schema()
 export class Milestone {
-  @Prop({ type: Types.ObjectId, required: true, auto: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true, auto: true })
   _id!: Types.ObjectId;
 
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 150 })
@@ -67,7 +67,7 @@ export class Milestone {
   @Prop({ type: Date, required: true, default: () => new Date() })
   createdAt!: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   createdById?: Types.ObjectId;
 
   /**
@@ -102,11 +102,11 @@ export class Project extends AuditableDocument {
   description?: string;
 
   /** Exactly one client (BR-03). The BR-10 anchor for everything below. */
-  @Prop({ type: Types.ObjectId, ref: 'Client', required: true, index: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Client', required: true, index: true })
   clientId!: Types.ObjectId;
 
   /** Exactly one owning PM (BR-24). Only an Administrator may reassign it. */
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true, index: true })
   projectManagerId!: Types.ObjectId;
 
   @Prop({
@@ -124,7 +124,7 @@ export class Project extends AuditableDocument {
   endDate!: Date;
 
   /** Provenance only. Later template edits never affect the project (FR-076). */
-  @Prop({ type: Types.ObjectId, ref: 'ProjectTemplate', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'ProjectTemplate', required: false })
   templateId?: Types.ObjectId;
 
   @Prop({ type: [TeamMemberSchema], required: true, default: [] })
@@ -137,7 +137,7 @@ export class Project extends AuditableDocument {
   @Prop({ type: Date, default: null })
   archivedAt?: Date | null;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   archivedBy?: Types.ObjectId;
 }
 
