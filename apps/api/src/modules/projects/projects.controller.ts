@@ -13,6 +13,7 @@ import {
   ReassignProjectManagerDto,
   UpdateProjectDto,
 } from './dto/project.dto';
+import { CreateMilestoneDto, UpdateMilestoneDto } from './dto/milestone.dto';
 
 /**
  * `/api/v1/projects` (FR-019 – FR-026).
@@ -105,6 +106,43 @@ export class ProjectsController {
     @CurrentScope() scope: AccessScope,
   ): Promise<ProjectDetail> {
     return this.projects.addTeamMember(id, dto, scope);
+  }
+
+  /**
+   * FR-029 — milestones live inside the project document (ADR-0004), so they
+   * are written here. That is why there is no MilestonesModule.
+   */
+  @Post(':id/milestones')
+  @Roles(Role.ADMINISTRATOR, Role.PROJECT_MANAGER)
+  createMilestone(
+    @Param('id') id: string,
+    @Body() dto: CreateMilestoneDto,
+    @CurrentScope() scope: AccessScope,
+  ): Promise<ProjectDetail> {
+    return this.projects.createMilestone(id, dto, scope);
+  }
+
+  /** FR-030 — status and progress are absent from the DTO by design (BR-08). */
+  @Patch(':id/milestones/:milestoneId')
+  @Roles(Role.ADMINISTRATOR, Role.PROJECT_MANAGER)
+  updateMilestone(
+    @Param('id') id: string,
+    @Param('milestoneId') milestoneId: string,
+    @Body() dto: UpdateMilestoneDto,
+    @CurrentScope() scope: AccessScope,
+  ): Promise<ProjectDetail> {
+    return this.projects.updateMilestone(id, milestoneId, dto, scope);
+  }
+
+  /** FR-034 — refused while the milestone still holds open tasks. */
+  @Delete(':id/milestones/:milestoneId')
+  @Roles(Role.ADMINISTRATOR, Role.PROJECT_MANAGER)
+  deleteMilestone(
+    @Param('id') id: string,
+    @Param('milestoneId') milestoneId: string,
+    @CurrentScope() scope: AccessScope,
+  ): Promise<ProjectDetail> {
+    return this.projects.deleteMilestone(id, milestoneId, scope);
   }
 
   /** FR-024 */

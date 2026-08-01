@@ -13,7 +13,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "verify:storage": "node scripts/verify-storage.js",
-    "seed:admin": "node scripts/seed-admin.js"
+    "seed:admin": "node scripts/seed-admin.js",
+    "verify:slice4": "node scripts/verify-slice4.js"
   },
   "dependencies": {
     "@agencyflow/contracts": "0.1.0",

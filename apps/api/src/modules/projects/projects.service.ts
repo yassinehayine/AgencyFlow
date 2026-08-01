@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   ErrorCode,
   MilestoneStatus,
@@ -27,7 +27,12 @@ import { ClientsService } from '../clients/clients.service';
 import { UsersRepository } from '../users/users.repository';
 import { toUserSummary } from '../users/users.mapper';
 import { ProjectsRepository } from './projects.repository';
-import { MAX_TEAM_MEMBERS } from './schemas/project.schema';
+import {
+  TASK_PROGRESS_LOOKUP,
+  type MilestoneProgress,
+  type TaskProgressLookup,
+} from './task-progress.port';
+import { MAX_MILESTONES, MAX_TEAM_MEMBERS } from './schemas/project.schema';
 import type {
   AddTeamMemberDto,
   ChangeProjectStatusDto,
@@ -36,6 +41,7 @@ import type {
   ReassignProjectManagerDto,
   UpdateProjectDto,
 } from './dto/project.dto';
+import type { CreateMilestoneDto, UpdateMilestoneDto } from './dto/milestone.dto';
 import type { ProjectDocument } from './schemas/project.schema';
 
 /**
@@ -57,6 +63,7 @@ export class ProjectsService {
     private readonly users: UsersRepository,
     private readonly clients: ClientsService,
     private readonly clientsRepository: ClientsRepository,
+    @Inject(TASK_PROGRESS_LOOKUP) private readonly taskProgress: TaskProgressLookup,
   ) {}
 
   /** FR-019 */
@@ -268,17 +275,28 @@ export class ProjectsService {
   /**
    * FR-024.
    *
-   * ⚠️ The rule is only half enforced. FR-024 refuses removal while the member
-   * still holds non-done, non-cancelled tasks in this project, and `tasks`
-   * does not exist until the Work slice. The membership check below is real;
-   * the open-task check is not yet possible, and is registered as owed rather
-   * than quietly skipped. See ADR-0005's sibling note in the Slice 3 PR.
+   * Now fully enforced: the open-task half arrived with `TasksModule`, through
+   * the same port that supplies milestone progress. Removing a member who
+   * still holds outstanding work would leave those tasks assigned to somebody
+   * no longer on the team, which contradicts BR-23.
    */
   async removeTeamMember(id: string, userId: string, scope: AccessScope): Promise<ProjectDetail> {
     const project = await this.getOrFailWritable(id, scope);
 
     if (!project.teamMembers.some((member) => member.userId.toString() === userId)) {
       throw new ResourceNotFoundException(fr.projects.notFound);
+    }
+
+    const openTasks = await this.taskProgress.countOpenTasksForMember(
+      project._id,
+      new Types.ObjectId(userId),
+    );
+
+    if (openTasks > 0) {
+      throw new BusinessRuleViolationException(
+        ErrorCode.MEMBER_HAS_OPEN_TASKS,
+        fr.tasks.memberHasOpenTasks,
+      );
     }
 
     const updated = await this.repository.updateById(
@@ -288,6 +306,142 @@ export class ProjectsService {
     );
 
     return this.toDetail(this.orFail(updated), scope);
+  }
+
+  // ---------------------------------------------------------------------
+  // Milestones — embedded, so ProjectsModule is their sole writer (ADR-0004)
+  // ---------------------------------------------------------------------
+
+  /** FR-029 */
+  async createMilestone(
+    id: string,
+    dto: CreateMilestoneDto,
+    scope: AccessScope,
+  ): Promise<ProjectDetail> {
+    const project = await this.getOrFailWritable(id, scope);
+
+    if (project.milestones.length >= MAX_MILESTONES) {
+      throw new BusinessRuleViolationException(
+        ErrorCode.MILESTONE_LIMIT_REACHED,
+        fr.projects.milestoneLimitReached,
+      );
+    }
+
+    this.assertOrderFree(project, dto.order);
+
+    const updated = await this.repository.updateById(
+      id,
+      {
+        $push: {
+          milestones: {
+            _id: new Types.ObjectId(),
+            name: dto.name,
+            ...(dto.description ? { description: dto.description } : {}),
+            ...(dto.dueDate ? { dueDate: new Date(dto.dueDate) } : {}),
+            order: dto.order,
+            createdAt: new Date(),
+            ...(scope.actorId ? { createdById: new Types.ObjectId(scope.actorId) } : {}),
+          },
+        },
+      },
+      scope,
+    );
+
+    return this.toDetail(this.orFail(updated), scope);
+  }
+
+  /**
+   * FR-030.
+   *
+   * Only the four descriptive fields are writable. Status and progress are not
+   * accepted, not stored, and not settable by any route — they are derived
+   * from tasks on every read (BR-08).
+   */
+  async updateMilestone(
+    id: string,
+    milestoneId: string,
+    dto: UpdateMilestoneDto,
+    scope: AccessScope,
+  ): Promise<ProjectDetail> {
+    const project = await this.getOrFailWritable(id, scope);
+    const existing = this.findMilestone(project, milestoneId);
+
+    if (dto.order !== undefined && dto.order !== existing.order) {
+      this.assertOrderFree(project, dto.order);
+    }
+
+    const set: Record<string, unknown> = {};
+    if (dto.name !== undefined) set['milestones.$[m].name'] = dto.name;
+    if (dto.description !== undefined) set['milestones.$[m].description'] = dto.description;
+    if (dto.dueDate !== undefined) set['milestones.$[m].dueDate'] = new Date(dto.dueDate);
+    if (dto.order !== undefined) set['milestones.$[m].order'] = dto.order;
+
+    const updated = await this.repository.updateEmbedded(
+      id,
+      { $set: set },
+      [{ 'm._id': new Types.ObjectId(milestoneId) }],
+      scope,
+    );
+
+    return this.toDetail(this.orFail(updated), scope);
+  }
+
+  /**
+   * FR-034.
+   *
+   * Refused while the milestone still holds tasks that are neither DONE nor
+   * CANCELLED. Deleting it regardless would leave those tasks pointing at a
+   * milestone that no longer exists — and because `milestoneId` references an
+   * EMBEDDED document, no database constraint would catch it (06-DB §9).
+   */
+  async deleteMilestone(
+    id: string,
+    milestoneId: string,
+    scope: AccessScope,
+  ): Promise<ProjectDetail> {
+    const project = await this.getOrFailWritable(id, scope);
+    this.findMilestone(project, milestoneId);
+
+    const openTasks = await this.taskProgress.progressByMilestone(project._id);
+    const rollup = openTasks.get(milestoneId);
+
+    if (rollup && rollup.openTaskCount > 0) {
+      throw new BusinessRuleViolationException(
+        ErrorCode.MILESTONE_HAS_OPEN_TASKS,
+        fr.tasks.milestoneHasOpenTasks,
+      );
+    }
+
+    const updated = await this.repository.updateById(
+      id,
+      { $pull: { milestones: { _id: new Types.ObjectId(milestoneId) } } },
+      scope,
+    );
+
+    return this.toDetail(this.orFail(updated), scope);
+  }
+
+  /** `order` defines the roadmap sequence, so duplicates make it ambiguous. */
+  private assertOrderFree(project: ProjectDocument, order: number): void {
+    if (project.milestones.some((milestone) => milestone.order === order)) {
+      throw new ResourceConflictException(
+        ErrorCode.MILESTONE_ORDER_TAKEN,
+        fr.projects.milestoneOrderTaken,
+      );
+    }
+  }
+
+  private findMilestone(
+    project: ProjectDocument,
+    milestoneId: string,
+  ): ProjectDocument['milestones'][number] {
+    const found = project.milestones.find((milestone) => milestone._id.toString() === milestoneId);
+
+    if (!found) {
+      throw new ResourceNotFoundException(fr.projects.milestoneNotFound);
+    }
+
+    return found;
   }
 
   // ---------------------------------------------------------------------
@@ -431,9 +585,13 @@ export class ProjectsService {
       ...(isClient ? [] : document.teamMembers.map((member) => member.userId)),
     ];
 
-    const [clientNames, users] = await Promise.all([
+    const [clientNames, users, progress] = await Promise.all([
       this.clientsRepository.findNamesByIds([document.clientId], scope),
       this.users.findByIds(userIds, scope),
+      // FR-031, FR-032 — one aggregation for the whole roadmap, not one per
+      // milestone. Unscoped by design: a Client Contact may see progress
+      // (FR-033) while seeing no tasks at all (BR-28).
+      this.taskProgress.progressByMilestone(document._id),
     ]);
 
     const summary = this.toSummary(document, clientNames);
@@ -457,7 +615,10 @@ export class ProjectsService {
                 : [];
             }),
           }),
-      milestones: document.milestones.map((milestone) => this.toMilestoneView(milestone)),
+      milestones: document.milestones
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .map((milestone) => this.toMilestoneView(milestone, progress)),
       createdAt: (document.createdAt ?? new Date()).toISOString(),
       updatedAt: (document.updatedAt ?? new Date()).toISOString(),
     };
@@ -466,22 +627,30 @@ export class ProjectsService {
   /**
    * BR-08 — status and progress are computed, never stored.
    *
-   * The formula is evaluated against this project's tasks. There are no tasks
-   * until the Work slice, and the values below are what the formula yields for
-   * an empty task set: progress 0 because the denominator is 0, and
-   * NOT_STARTED because no non-cancelled task has left TODO. This is the rule
-   * applied to current data, not a placeholder — when `tasks` exists, only the
-   * aggregation feeding it changes, and the shape stays identical.
+   * The values come from an aggregation over this project's tasks, performed
+   * on every read. `06-Database-Design.md` §7.3 forbids persisting them even
+   * as a cache: a stored copy can disagree with the tasks it summarises, and
+   * the disagreement is silent — no error, just a wrong percentage shown to a
+   * client deciding whether to approve work.
+   *
+   * A milestone with no tasks is ABSENT from the map rather than zero-filled,
+   * so the fallback below is the formula evaluated on an empty set: 0% because
+   * the denominator is 0, and NOT_STARTED because no task has left TODO.
    */
-  private toMilestoneView(milestone: ProjectDocument['milestones'][number]): MilestoneView {
+  private toMilestoneView(
+    milestone: ProjectDocument['milestones'][number],
+    progress: Map<string, MilestoneProgress>,
+  ): MilestoneView {
+    const rollup = progress.get(milestone._id.toString());
+
     return {
       id: milestone._id.toString(),
       name: milestone.name,
       ...(milestone.description ? { description: milestone.description } : {}),
       ...(milestone.dueDate ? { dueDate: milestone.dueDate.toISOString() } : {}),
       order: milestone.order,
-      status: MilestoneStatus.NOT_STARTED,
-      progress: 0,
+      status: rollup?.status ?? MilestoneStatus.NOT_STARTED,
+      progress: rollup?.progress ?? 0,
     };
   }
 }

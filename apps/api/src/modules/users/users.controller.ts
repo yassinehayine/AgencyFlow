@@ -67,6 +67,24 @@ export class UsersController {
   }
 
   /**
+   * FR-010, US-008 — deactivate an account.
+   *
+   * A named command, not a `PATCH { isActive }`. Deactivation carries BR-32,
+   * A-10 and a self-lockout check; a writable boolean would be a path around
+   * all three.
+   */
+  @Post(':id/deactivate')
+  deactivate(@Param('id') id: string, @CurrentScope() scope: AccessScope): Promise<UserDetail> {
+    return this.users.deactivate(id, scope);
+  }
+
+  /** The reverse. No BR-32 constraint applies to re-enabling an account. */
+  @Post(':id/activate')
+  activate(@Param('id') id: string, @CurrentScope() scope: AccessScope): Promise<UserDetail> {
+    return this.users.activate(id, scope);
+  }
+
+  /**
    * FR-006 — reset another user's password.
    *
    * A named sub-resource rather than a field on PATCH /users/:id. Setting a

@@ -1,4 +1,5 @@
 import type {
+  CreateMilestoneRequest,
   AddTeamMemberRequest,
   ChangeProjectStatusRequest,
   CreateProjectRequest,
@@ -114,6 +115,21 @@ export function useRemoveTeamMember(id: string) {
   return useMutation({
     mutationFn: (userId: string) =>
       apiRequest<ProjectDetail>(`/projects/${id}/team/${userId}`, { method: 'DELETE' }),
+    onSuccess: (project) => writeBack(queryClient, id, project),
+  });
+}
+
+/**
+ * FR-029 — milestones are written through the PROJECT, because they live
+ * inside its document (ADR-0004). There is no /milestones resource, and that
+ * absence is the design rather than an omission.
+ */
+export function useCreateMilestone(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: CreateMilestoneRequest) =>
+      apiRequest<ProjectDetail>(`/projects/${id}/milestones`, { method: 'POST', body }),
     onSuccess: (project) => writeBack(queryClient, id, project),
   });
 }

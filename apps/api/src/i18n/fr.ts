@@ -63,6 +63,25 @@ export const fr = {
     archived: 'Ce projet est archivé et ne peut plus être modifié.',
   },
 
+  tasks: {
+    notFound: 'Tâche introuvable.',
+    invalidTransition: (from: string, to: string) =>
+      `Le passage du statut « ${from} » à « ${to} » n'est pas autorisé pour cette tâche.`,
+    /** BR-04 — the refusal the whole product is judged on. */
+    completionForbidden:
+      'Seul un chef de projet ou un administrateur peut marquer une tâche comme terminée.',
+    managerOnly: 'Seul un chef de projet ou un administrateur peut effectuer cette action.',
+    notAssignedToYou: 'Vous ne pouvez modifier que les tâches qui vous sont assignées.',
+    blockedReasonRequired: 'Un motif est obligatoire pour bloquer une tâche.',
+    assigneeNotOnTeam:
+      'Cette personne ne fait pas partie de l’équipe du projet. Ajoutez-la à l’équipe avant de lui assigner une tâche.',
+    milestoneNotInProject: 'Ce jalon n’appartient pas au projet de la tâche.',
+    milestoneHasOpenTasks:
+      'Ce jalon contient encore des tâches en cours. Terminez-les ou annulez-les avant de le supprimer.',
+    memberHasOpenTasks:
+      'Cette personne a encore des tâches en cours sur ce projet. Réaffectez-les ou annulez-les avant de la retirer.',
+  },
+
   clients: {
     notFound: 'Organisation cliente introuvable.',
     nameAlreadyExists: 'Une organisation cliente porte déjà ce nom.',

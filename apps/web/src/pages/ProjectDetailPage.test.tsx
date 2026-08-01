@@ -71,7 +71,12 @@ async function renderAs(user: AuthenticatedUser, project: ProjectDetail) {
   apiRequest.mockImplementation((path: string) => {
     if (path.startsWith('/projects/')) return Promise.resolve(project);
     if (path.startsWith('/users')) return Promise.resolve({ items: [], page: 1, totalPages: 1 });
-    return Promise.resolve(null);
+    if (path.startsWith('/tasks'))
+      return Promise.resolve({ items: [], page: 1, pageSize: 100, totalItems: 0, totalPages: 1 });
+    // Answering explicitly rather than falling through to null: an unhandled
+    // path used to resolve `null`, and the page only survived because the
+    // assertions happened to run while that query was still pending.
+    throw new Error(`unmocked request: ${path}`);
   });
 
   const { AuthProvider } = await import('../features/auth/AuthContext');
@@ -160,5 +165,32 @@ describe('ProjectDetailPage — FR-021 transitions', () => {
     await renderAs(OWNER, projectOf({ status: ProjectStatus.COMPLETED }));
 
     expect(await screen.findByText(fr.projects.noTransitions)).toBeInTheDocument();
+  });
+});
+
+describe('ProjectDetailPage — BR-28, tasks are internal', () => {
+  /**
+   * The panel must not be MOUNTED for a client, not merely emptied. A mounted
+   * panel would issue GET /tasks, which the API answers 403 — a request the
+   * client should never have made.
+   */
+  it('does not request tasks at all for a Client Contact', async () => {
+    await renderAs(CLIENT_USER, projectOf());
+
+    await screen.findByText(fr.projects.teamHiddenForClient);
+
+    const paths = apiRequest.mock.calls.map((call) => String(call[0]));
+    expect(paths.some((path) => path.startsWith('/tasks'))).toBe(false);
+  });
+
+  it('requests them for agency staff', async () => {
+    await renderAs(OWNER, projectOf());
+
+    await screen.findByText(/Refonte site NewDev/);
+
+    await vi.waitFor(() => {
+      const paths = apiRequest.mock.calls.map((call) => String(call[0]));
+      expect(paths.some((path) => path.startsWith('/tasks'))).toBe(true);
+    });
   });
 });
