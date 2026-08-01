@@ -1,0 +1,39 @@
+# Local development database for AgencyFlow.
+#
+# MongoDB runs as a SINGLE-NODE REPLICA SET, not a standalone server.
+#
+# This is not optional. Multi-document transactions require a replica set,
+# and 06-Database-Design.md section 9.3 needs one for the cascading project
+# soft-delete that spans six collections. MongoDB Atlas M0 is a three-node
+# replica set, so a standalone container here would let transactions fail
+# locally while passing in production - or the reverse. Risk DB-R2 / AR-02.
+#
+# The replica set initiates itself through the healthcheck below, so
+# `docker compose up -d` is all that is needed.
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: agencyflow-mongo
+    restart: unless-stopped
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    volumes:
+      - ./.docker-data/mongo:/data/db
+    healthcheck:
+      # Reports healthy once the replica set is initiated. On the first run
+      # rs.status() throws (NotYetInitialized), the catch initiates the set,
+      # and the next probe succeeds.
+      test: |
+        mongosh --quiet --eval "
+          try {
+            rs.status().ok
+          } catch (e) {
+            rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }).ok
+          }
+        "
+      interval: 5s
+      timeout: 30s
+      start_period: 10s
+      retries: 30

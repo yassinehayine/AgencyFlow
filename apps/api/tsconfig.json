@@ -1,0 +1,27 @@
+{
+  "extends": "@agencyflow/config/tsconfig.base.json",
+  "compilerOptions": {
+    // NestJS runs on CommonJS and relies on decorator metadata for its
+    // dependency injection container.
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "baseUrl": "./",
+
+    // `incremental` is deliberately OFF. Combined with nest-cli's
+    // `deleteOutDir: true` it produces silently incomplete builds: tsc reads
+    // .tsbuildinfo, concludes a file is unchanged and skips emitting it, but
+    // Nest has already wiped dist. The build reports success and the process
+    // then dies at runtime with MODULE_NOT_FOUND. Correctness over a few
+    // hundred milliseconds.
+
+    // Mongoose and class-validator both rely on the DOM-free Node types only.
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
+}
