@@ -39,7 +39,11 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
 
-  await app.listen(config.port);
+  // Bind on all interfaces, not just loopback. A container platform routes
+  // traffic to the instance from outside, so a service listening only on
+  // 127.0.0.1 passes its own health check locally and is unreachable in
+  // production (05-Software-Architecture.md section 15).
+  await app.listen(config.port, '0.0.0.0');
 
   logger.log(`AgencyFlow API listening on http://localhost:${config.port}`);
   logger.log(`Environment: ${config.nodeEnv}`);

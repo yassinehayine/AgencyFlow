@@ -6,12 +6,12 @@ import { queryKeys } from '../../lib/query-keys';
 
 /**
  * Health probe. `/health` is unversioned so that platform probes hit a stable
- * path, hence `absolutePath`.
+ * path, hence `unversioned`.
  */
 export function useHealth() {
   return useQuery({
     queryKey: queryKeys.health.status(),
-    queryFn: () => apiRequest<HealthResponse>('/health', { absolutePath: true }),
+    queryFn: () => apiRequest<HealthResponse>('/health', { unversioned: true }),
     // Long retry window on purpose: Render's free tier can take 30-60 seconds
     // to wake, and giving up early would report a healthy system as broken
     // (AR-09).
