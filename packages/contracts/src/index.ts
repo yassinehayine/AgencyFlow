@@ -10,6 +10,8 @@
  * the web build fail in CI, which is the compile-time safety that justified
  * the monorepo.
  */
-export * from './enums';
-export * from './api';
-export * from './auth';
+// Explicit `.js` extensions so the ESM build is valid Node ESM as well as
+// bundler-resolvable. TypeScript maps `./enums.js` back to `./enums.ts`.
+export * from './enums.js';
+export * from './api.js';
+export * from './auth.js';

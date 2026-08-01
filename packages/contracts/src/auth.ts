@@ -4,7 +4,7 @@
  * Authentication is email + password only. No self-service reset, no 2FA,
  * no persistent sessions in v1 (BR-13).
  */
-import type { Role, Skill } from './enums';
+import type { Role, Skill } from './enums.js';
 
 export interface LoginRequest {
   email: string;
