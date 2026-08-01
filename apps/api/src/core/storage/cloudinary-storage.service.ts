@@ -20,10 +20,51 @@ export class CloudinaryStorageService implements IStorageService, OnModuleInit {
   constructor(private readonly config: AppConfigService) {}
 
   onModuleInit(): void {
-    // CLOUDINARY_URL is parsed by the SDK from the environment; passing it
-    // explicitly keeps the dependency visible rather than implicit.
-    cloudinary.config({ secure: true });
-    this.logger.log(`Cloudinary configured (folder: ${this.config.cloudinaryFolder})`);
+    // Credentials are parsed from the validated configuration and passed in
+    // explicitly.
+    //
+    // The SDK can auto-configure itself by reading CLOUDINARY_URL from
+    // process.env, but it does so AT REQUIRE TIME. That makes correctness
+    // depend on module load order: if anything imports `cloudinary` before
+    // ConfigModule has read the .env file, the SDK initialises empty and
+    // every call fails with "Must supply cloud_name". Configuring explicitly
+    // here removes the ordering dependency entirely.
+    const { cloudName, apiKey, apiSecret } = this.parseCloudinaryUrl(this.config.cloudinaryUrl);
+
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+
+    this.logger.log(
+      `Cloudinary configured (cloud: ${cloudName}, folder: ${this.config.cloudinaryFolder})`,
+    );
+  }
+
+  /**
+   * Parses `cloudinary://<api_key>:<api_secret>@<cloud_name>`.
+   *
+   * Throws on a malformed value rather than continuing with partial
+   * credentials, so a configuration mistake surfaces at boot instead of at
+   * the first upload a user attempts.
+   */
+  private parseCloudinaryUrl(url: string): {
+    cloudName: string;
+    apiKey: string;
+    apiSecret: string;
+  } {
+    const match = /^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/.exec(url);
+
+    if (!match) {
+      throw new Error(
+        'CLOUDINARY_URL is malformed. Expected cloudinary://<api_key>:<api_secret>@<cloud_name>',
+      );
+    }
+
+    const [, apiKey, apiSecret, cloudName] = match;
+    return { cloudName, apiKey, apiSecret };
   }
 
   async upload(buffer: Buffer, context: UploadContext): Promise<StoredFile> {

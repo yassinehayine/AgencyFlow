@@ -45,6 +45,30 @@ export default tseslint.config(
     },
   },
 
+  // Operational scripts: plain CommonJS, run with node against the compiled
+  // output. They are diagnostics, not application code - reporting to stdout
+  // is their entire purpose, and they cannot import ESM from dist.
+  // Scoped narrowly so the rules above stay strict everywhere else.
+  {
+    files: ['**/scripts/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-console': 'off',
+    },
+  },
+
   // Prettier owns formatting entirely (00-Project-Foundation.md 11.3).
   // Must remain last so it can switch off conflicting stylistic rules.
   prettier,
