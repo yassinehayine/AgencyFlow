@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import type { HealthResponse } from '@agencyflow/contracts';
 
+import { Public } from '../../core/authorization/authorization.decorators';
 import { HealthService } from './health.service';
 
 /**
@@ -14,6 +15,7 @@ import { HealthService } from './health.service';
 export class HealthController {
   constructor(private readonly health: HealthService) {}
 
+  @Public()
   @Get()
   async check(): Promise<HealthResponse> {
     return this.health.check();

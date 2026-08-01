@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 
+import { AuthorizationModule } from './core/authorization/authorization.module';
 import { AppConfigModule } from './core/config/app-config.module';
 import { AppConfigService } from './core/config/app-config.service';
 import { StorageModule } from './core/storage/storage.module';
@@ -27,6 +28,7 @@ import { HealthModule } from './modules/health/health.module';
         serverSelectionTimeoutMS: 5000,
       }),
     }),
+    AuthorizationModule,
     StorageModule,
     // In-process domain events (05-Software-Architecture.md section 9).
     // Business services publish facts; Activity and Notification listeners
