@@ -304,6 +304,35 @@ describe('FR-069 — the Project Manager dashboard leads with what waits on them
 
     expect(projects.accessibleProjectIds).not.toHaveBeenCalled();
   });
+
+  /**
+   * Regression. This service originally copied `TasksService`'s exemption,
+   * which skips resolution for a Client Contact — correct there, because a
+   * client may see no task whatever the scope says (BR-28), so the query would
+   * buy nothing.
+   *
+   * It is wrong here, because this service also reads DELIVERABLES, which a
+   * client IS entitled to see and which carry no `clientId` of their own.
+   * Without the resolved list `DeliverablesRepository` fails closed and the
+   * portal's most important panel renders empty — no error, no leak, just a
+   * client told they have nothing to approve while a deliverable waits.
+   *
+   * The unit tests could not catch it: the fake repository returns its fixture
+   * whatever scope it is handed. Only the end-to-end run against real MongoDB
+   * did. So the assertion is on the SCOPE that reaches the repository, which is
+   * the thing that was actually wrong.
+   */
+  it('resolves the project list for a Client Contact too', async () => {
+    const { service, projects, deliverables } = build();
+
+    await service.findForCurrentUser(scopeOf(Role.CLIENT_CONTACT), NOW);
+
+    expect(projects.accessibleProjectIds).toHaveBeenCalledTimes(1);
+
+    const [, deliverableScope] = deliverables.findMany.mock.calls[0] as [unknown, AccessScope];
+
+    expect(deliverableScope.accessibleProjectIds).toEqual([PROJECT_ID.toString()]);
+  });
 });
 
 describe('FR-068 — the Administrator sees the agency', () => {

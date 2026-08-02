@@ -264,11 +264,24 @@ export class DashboardsService {
    *
    * 08-Backend-Design §3.3 calls for this to be lazy and memoized; a dashboard
    * is the case it was written for, since every panel needs the same list.
-   * Administrators and Client Contacts are skipped because their filters are
-   * expressible directly — `{}` and `clientId` respectively.
+   *
+   * **Only an Administrator is exempt, and a Client Contact emphatically is
+   * not.** `TasksService` skips clients because `TasksRepository` refuses them
+   * every task regardless (BR-28), so resolving would buy nothing. Copying that
+   * exemption here was a defect: this service also reads DELIVERABLES, which a
+   * client IS entitled to see and which carry no `clientId` of their own — so
+   * without a resolved list `DeliverablesRepository` fails closed and the
+   * portal's most important panel renders empty.
+   *
+   * It failed in the safe direction, which is exactly why it survived the unit
+   * tests: nothing leaked, the payload was well formed, and the only symptom
+   * was a client being told they had nothing to approve while a deliverable sat
+   * waiting for them. A read model that reads from several modules has to
+   * satisfy the union of their requirements, not those of the first one it was
+   * modelled on.
    */
   private async resolveScope(scope: AccessScope): Promise<AccessScope> {
-    if (scope.isAdministrator() || scope.isClientContact()) {
+    if (scope.isAdministrator()) {
       return scope;
     }
 

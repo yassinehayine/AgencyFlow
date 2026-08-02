@@ -15,7 +15,8 @@
     "verify:storage": "node scripts/verify-storage.js",
     "seed:admin": "node scripts/seed-admin.js",
     "verify:slice4": "node scripts/verify-slice4.js",
-    "verify:slice5": "node scripts/verify-slice5.js"
+    "verify:slice5": "node scripts/verify-slice5.js",
+    "verify:slice6": "node scripts/verify-slice6.js"
   },
   "dependencies": {
     "@agencyflow/contracts": "0.1.0",
