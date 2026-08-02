@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
+import { TASK_INSIGHTS_LOOKUP } from '../dashboards/task-insights.port';
 import { OPEN_TASKS_LOOKUP } from '../users/open-tasks.port';
 import { ProjectsModule } from '../projects/projects.module';
 import { TASK_PROGRESS_LOOKUP } from '../projects/task-progress.port';
@@ -23,9 +24,12 @@ import { TasksService } from './tasks.service';
  *   `OPEN_TASKS_LOOKUP`     UsersModule needs BR-32, but
  *                           Users -> Tasks -> Projects -> Users would close.
  *
- * Only the two tokens are exported, not the service or the repository, so the
- * module boundary stays intact: nothing gains access to task data by accident,
- * only to the two questions the other modules are entitled to ask.
+ * `TASK_INSIGHTS_LOOKUP` is the third token and the first one that breaks no
+ * cycle at all — `DashboardsModule` is a leaf and could have imported this
+ * module directly. It goes through a port for the reason the other two happen
+ * to share as a side effect: only tokens are exported here, never the service
+ * or the repository, so nothing gains access to task data by accident — only
+ * to the questions another module is entitled to ask.
  */
 @Global()
 @Module({
@@ -41,7 +45,8 @@ import { TasksService } from './tasks.service';
     OpenTasksAdapter,
     { provide: TASK_PROGRESS_LOOKUP, useExisting: TasksRepository },
     { provide: OPEN_TASKS_LOOKUP, useExisting: OpenTasksAdapter },
+    { provide: TASK_INSIGHTS_LOOKUP, useExisting: TasksRepository },
   ],
-  exports: [TASK_PROGRESS_LOOKUP, OPEN_TASKS_LOOKUP],
+  exports: [TASK_PROGRESS_LOOKUP, OPEN_TASKS_LOOKUP, TASK_INSIGHTS_LOOKUP],
 })
 export class TasksModule {}
