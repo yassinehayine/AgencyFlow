@@ -1,3 +1,5 @@
+import type { FileRejectionReason } from '../core/storage/file-validation';
+
 /**
  * French user-facing messages (NFR-01, NFR-06).
  *
@@ -80,6 +82,38 @@ export const fr = {
       'Ce jalon contient encore des tâches en cours. Terminez-les ou annulez-les avant de le supprimer.',
     memberHasOpenTasks:
       'Cette personne a encore des tâches en cours sur ce projet. Réaffectez-les ou annulez-les avant de la retirer.',
+  },
+
+  deliverables: {
+    notFound: 'Livrable introuvable.',
+    invalidTransition: (from: string, to: string) =>
+      `Le passage du statut « ${from} » à « ${to} » n'est pas autorisé pour ce livrable.`,
+    /** BR-07 — the refusal that makes an approval mean something. */
+    alreadyApproved:
+      'Ce livrable est approuvé : il ne peut plus être modifié, ni désapprouvé. Créez une nouvelle version ou un nouveau livrable.',
+    authorIsManagerOnly:
+      'Seul le chef de projet responsable ou un administrateur peut préparer un livrable.',
+    /** FR-048 — an approval the agency could grant itself is worthless. */
+    decisionIsClientOnly: 'Seul un contact client peut se prononcer sur un livrable.',
+    submissionRequiresFile: 'Ajoutez au moins un fichier avant d’envoyer ce livrable au client.',
+    decisionCommentRequired: 'Un commentaire est obligatoire pour demander des modifications.',
+    versionLimitReached: 'Ce livrable a atteint son nombre maximal de versions.',
+  },
+
+  files: {
+    notFound: 'Fichier introuvable.',
+    limitReached: 'Cette version a atteint son nombre maximal de fichiers.',
+    rejected: (reason: FileRejectionReason, detail?: string): string => {
+      const messages: Record<FileRejectionReason, string> = {
+        EMPTY: 'Le fichier est vide.',
+        TOO_LARGE: 'Le fichier dépasse la taille maximale de 20 Mo.',
+        EXTENSION_NOT_ALLOWED: `Le format « ${detail ?? '?'} » n'est pas accepté. Formats autorisés : PDF, PNG, JPG, JPEG, SVG, DOCX, XLSX, PPTX, ZIP.`,
+        // Says what was detected without saying how - naming the signature
+        // check would tell an attacker exactly what to forge.
+        CONTENT_MISMATCH: `Le contenu du fichier ne correspond pas à son extension « ${detail ?? '?'} ».`,
+      };
+      return messages[reason] ?? 'Fichier refusé.';
+    },
   },
 
   clients: {

@@ -131,6 +131,49 @@ export const fr = {
     remove: 'Supprimer',
   },
 
+  deliverables: {
+    title: 'Livrables',
+    createTitle: 'Nouveau livrable',
+    name: 'Nom du livrable',
+    description: 'Description',
+    dueDate: 'Échéance',
+    empty: 'Aucun livrable pour ce projet.',
+    version: 'Version',
+    versionHistory: 'Historique des versions',
+    files: 'Fichiers',
+    addFile: 'Ajouter un fichier',
+    noFiles: 'Aucun fichier sur cette version.',
+    download: 'Télécharger',
+    submit: 'Envoyer au client',
+    startReview: 'Commencer la revue',
+    approve: 'Approuver',
+    requestChanges: 'Demander des modifications',
+    changesPrompt: 'Que faut-il modifier ?',
+    // FR-047 - the button is disabled with a reason rather than returning 422.
+    submitNeedsFile: 'Ajoutez au moins un fichier avant de l’envoyer au client.',
+    // BR-07 - approval is the end of the road, and saying so beats a page
+    // where every control has silently disappeared.
+    approvedNotice:
+      'Ce livrable est approuvé. Il ne peut plus être modifié : créez un nouveau livrable si nécessaire.',
+    awaitingClient: 'En attente de la décision du client.',
+    decisionComment: 'Commentaire du client',
+    allowedFormats: 'PDF, PNG, JPG, JPEG, SVG, DOCX, XLSX, PPTX, ZIP — 20 Mo maximum.',
+  },
+
+  deliverableStatus: {
+    DRAFT: 'Brouillon',
+    SUBMITTED: 'Envoyé au client',
+    UNDER_REVIEW: 'En cours de revue',
+    APPROVED: 'Approuvé',
+    CHANGES_REQUESTED: 'Modifications demandées',
+  },
+
+  versionOutcome: {
+    PENDING: 'En attente',
+    APPROVED: 'Approuvée',
+    CHANGES_REQUESTED: 'Modifications demandées',
+  },
+
   projectStatus: {
     PLANNED: 'Planifié',
     IN_PROGRESS: 'En cours',
