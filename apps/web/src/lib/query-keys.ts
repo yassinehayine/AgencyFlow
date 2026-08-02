@@ -18,6 +18,17 @@ export const queryKeys = {
   },
 
   /**
+   * No filters and no id: there is exactly one dashboard, yours, and which one
+   * that is comes from the server. A key that embedded the role would create a
+   * second cache entry the moment a role changed under ADR-0005 — with the old
+   * one still sitting there, ready to be shown.
+   */
+  dashboard: {
+    all: ['dashboard'] as const,
+    current: () => [...queryKeys.dashboard.all, 'current'] as const,
+  },
+
+  /**
    * List keys embed their filters, so two different filter sets are two
    * different cache entries rather than one that flickers between them.
    * `all` stays a prefix, so invalidating after a create refreshes every

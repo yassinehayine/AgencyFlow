@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { Field, INPUT_CLASS } from '../components/shared/Field';
 import { QueryBoundary } from '../components/shared/QueryBoundary';
 import { StatusBadge } from '../components/shared/StatusBadge';
+import { projectPath } from '../app/routes';
 import { useAuth } from '../features/auth/AuthContext';
 import { useClients } from '../features/clients/useClients';
 import { canCreateProject } from '../features/projects/project-permissions';
@@ -243,7 +244,7 @@ export function ProjectsPage() {
               {data.items.map((project) => (
                 <li key={project.id}>
                   <Link
-                    to={`/projects/${project.id}`}
+                    to={projectPath(user, project.id)}
                     className="block rounded-xl border border-slate-200 bg-white p-4 hover:border-slate-400"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">

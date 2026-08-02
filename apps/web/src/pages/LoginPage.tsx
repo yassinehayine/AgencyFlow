@@ -22,8 +22,14 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
-  /** Where the user was heading before being redirected here. */
-  const destination = (location.state as { from?: string } | null)?.from ?? '/projects';
+  /**
+   * Where the user was heading before being redirected here.
+   *
+   * The fallback is `/`, not a page: which tree someone lands in depends on
+   * their role, and `/` is the one route that works that out (FR-071 sends a
+   * Client Contact to their portal, everyone else to the workspace).
+   */
+  const destination = (location.state as { from?: string } | null)?.from ?? '/';
 
   if (isAuthenticated) {
     return <Navigate to={destination} replace />;

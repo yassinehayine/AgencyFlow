@@ -42,10 +42,64 @@ export const fr = {
   },
 
   nav: {
+    dashboard: 'Tableau de bord',
     projects: 'Projets',
     users: 'Utilisateurs',
     clients: 'Clients',
     status: 'État du système',
+  },
+
+  /**
+   * FR-068 – FR-073.
+   *
+   * Titles are written from the reader's point of view rather than from the
+   * data's — "Ce qui m'attend" and not "Tâches en revue". Each dashboard exists
+   * to answer one question its user actually asks, and the heading is that
+   * question answered.
+   */
+  dashboard: {
+    agencyTitle: 'L’agence en un coup d’œil',
+    myDayTitle: 'Ce qui m’attend aujourd’hui',
+    myWorkTitle: 'Mon travail',
+    portalTitle: 'Vos projets',
+
+    awaitingMyReview: 'À valider par vous',
+    nothingToReview: 'Rien à valider pour l’instant.',
+    blocked: 'Tâches bloquées',
+    nothingBlocked: 'Aucune tâche bloquée.',
+    awaitingClient: 'En attente du client',
+    noneAwaitingClient: 'Aucun livrable en attente de décision.',
+    awaitingMyApproval: 'En attente de votre décision',
+    nothingToApprove: 'Aucun livrable ne vous attend pour le moment.',
+    recentlyApproved: 'Approuvés récemment',
+    nothingApprovedYet: 'Aucun livrable approuvé pour l’instant.',
+
+    overdue: 'En retard',
+    overdueAgencyWide: 'En retard, toute l’agence',
+    noOverdue: 'Aucun retard.',
+    dueSoonTitle: 'À échéance proche',
+    dueSoon: 'Bientôt dû',
+    nothingDueSoon: 'Aucune échéance dans les trois prochains jours.',
+
+    myProjects: 'Mes projets',
+    activeProjects: 'Projets en cours',
+    noProjects: 'Aucun projet.',
+    upcomingMilestones: 'Prochains jalons',
+    noUpcomingMilestones: 'Aucun jalon à venir.',
+
+    workload: 'Charge de l’équipe',
+    noWorkload: 'Aucune tâche en cours.',
+    noTasksInColumn: 'Rien ici.',
+    empty: 'Rien à afficher.',
+
+    openTasks: (count: number) => `${count} tâche${count === 1 ? '' : 's'} en cours`,
+    overdueCount: (count: number) => `${count} en retard`,
+    completedTotal: (count: number) =>
+      `${count} tâche${count === 1 ? '' : 's'} terminée${count === 1 ? '' : 's'}.`,
+    count: (total: number) => `${total}`,
+    // A truncated list that does not admit it is truncated is worse than no
+    // list: the reader concludes there are ten when there are twenty-seven.
+    showingOf: (shown: number, total: number) => `${shown} sur ${total}`,
   },
 
   projects: {

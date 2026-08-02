@@ -1,6 +1,7 @@
 import type { Role } from '@agencyflow/contracts';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
+import { homePath, isClientContact } from '../../app/routes';
 import { useAuth } from '../../features/auth/AuthContext';
 import { fr } from '../../i18n/fr';
 
@@ -48,4 +49,27 @@ export function RequireRole({ roles }: { roles: Role[] }) {
   }
 
   return <Outlet />;
+}
+
+/**
+ * Keeps each audience in its own tree (09-Frontend-Design.md §8.1).
+ *
+ * These two REDIRECT where `RequireRole` refuses, and the difference is
+ * deliberate. Being told "not for you" is the honest answer when a page exists
+ * for other people — `/app/users` is a real page a Project Manager may not
+ * open. But `/app/projects` for a Client Contact is not a page they are barred
+ * from so much as the wrong address for something they do have: their portal
+ * has its own. Sending them there is more useful than a refusal, and it also
+ * makes a stale bookmark work rather than dead-end.
+ */
+export function RequireInternalRole() {
+  const { user } = useAuth();
+
+  return isClientContact(user) ? <Navigate to={homePath(user)} replace /> : <Outlet />;
+}
+
+export function RequireClientContact() {
+  const { user } = useAuth();
+
+  return isClientContact(user) ? <Outlet /> : <Navigate to={homePath(user)} replace />;
 }
