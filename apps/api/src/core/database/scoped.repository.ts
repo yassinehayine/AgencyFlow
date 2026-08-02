@@ -147,6 +147,15 @@ export abstract class ScopedRepository<TDocument> {
     id: string,
     update: UpdateQuery<TDocument>,
     scope: AccessScope,
+    /**
+     * Optional optimistic-concurrency guard, merged into the filter.
+     *
+     * For a read-modify-write — where the new value is computed from the
+     * document just read — passing the version field the caller based its
+     * computation on turns a lost update into a no-op the caller can detect,
+     * instead of one writer silently overwriting the other.
+     */
+    guard: FilterQuery<TDocument> = {},
   ): Promise<TDocument | null> {
     if (!this.isValidId(id)) {
       return null;
@@ -154,7 +163,7 @@ export abstract class ScopedRepository<TDocument> {
 
     return this.model
       .findOneAndUpdate(
-        this.buildFilter(scope, { _id: id } as FilterQuery<TDocument>),
+        this.buildFilter(scope, { _id: id, ...guard } as FilterQuery<TDocument>),
         this.withUpdateAudit(update, scope),
         { new: true },
       )

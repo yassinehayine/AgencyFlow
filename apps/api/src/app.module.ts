@@ -10,6 +10,7 @@ import { SecurityModule } from './core/security/security.module';
 import { StorageModule } from './core/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ClientsModule } from './modules/clients/clients.module';
+import { DeliverablesModule } from './modules/deliverables/deliverables.module';
 import { HealthModule } from './modules/health/health.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
@@ -60,6 +61,7 @@ import { UsersModule } from './modules/users/users.module';
     ClientsModule,
     ProjectsModule,
     TasksModule,
+    DeliverablesModule,
   ],
 })
 export class AppModule {}

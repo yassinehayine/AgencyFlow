@@ -72,6 +72,19 @@ export const ErrorCode = {
   MILESTONE_LIMIT_REACHED: 'MILESTONE_LIMIT_REACHED',
   /** 06-DB §7.3 — `order` is unique within a project's milestones. */
   MILESTONE_ORDER_TAKEN: 'MILESTONE_ORDER_TAKEN',
+  /** BR-07 — an approved deliverable is final in every respect. */
+  DELIVERABLE_ALREADY_APPROVED: 'DELIVERABLE_ALREADY_APPROVED',
+  /** FR-047, BR-05 — a submission with nothing attached asks for nothing. */
+  SUBMISSION_REQUIRES_FILE: 'SUBMISSION_REQUIRES_FILE',
+  /** FR-049 — a change request must say what to change. */
+  DECISION_COMMENT_REQUIRED: 'DECISION_COMMENT_REQUIRED',
+  /** P-9 — the embedded version array is bounded. */
+  VERSION_LIMIT_REACHED: 'VERSION_LIMIT_REACHED',
+  /** BR-15, NFR-24 — type, content or size refused server-side. */
+  FILE_REJECTED: 'FILE_REJECTED',
+  /** P-9 — a version carries at most 20 files. */
+  FILE_LIMIT_REACHED: 'FILE_LIMIT_REACHED',
+
   /** FR-027 — an archived project is read-only. */
   PROJECT_ARCHIVED: 'PROJECT_ARCHIVED',
   /** BR-04 — only a Project Manager or Administrator may complete a task. */
