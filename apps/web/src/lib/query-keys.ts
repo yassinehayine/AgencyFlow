@@ -47,6 +47,12 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.tasks.all, 'detail', id] as const,
   },
 
+  deliverables: {
+    all: ['deliverables'] as const,
+    list: (filters: object) => [...queryKeys.deliverables.all, 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.deliverables.all, 'detail', id] as const,
+  },
+
   clients: {
     all: ['clients'] as const,
     list: (filters: object) => [...queryKeys.clients.all, 'list', filters] as const,

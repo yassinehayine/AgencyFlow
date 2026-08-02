@@ -22,6 +22,7 @@ import {
 } from '../features/projects/useProjects';
 import { useUsers } from '../features/users/useUsers';
 import { TasksPanel } from '../features/tasks/TasksPanel';
+import { DeliverablesPanel } from '../features/deliverables/DeliverablesPanel';
 import { useCreateMilestone } from '../features/projects/useProjects';
 import { fr } from '../i18n/fr';
 import { ApiError } from '../lib/api-client';
@@ -116,6 +117,10 @@ function ProjectDetailView({ projectId, project }: { projectId: string; project:
           rather than mounted-and-empty, so no request is made that could only
           ever return 403. */}
       {!user || user.role !== Role.CLIENT_CONTACT ? <TasksPanel project={project} /> : null}
+
+      {/* Shown to EVERY role, including a Client Contact — the approval loop
+          is the whole reason they have an account (FR-052, unlike BR-28). */}
+      <DeliverablesPanel project={project} />
 
       {canReassignManager(user) && !project.isArchived && (
         <ManagerPanel projectId={projectId} project={project} />

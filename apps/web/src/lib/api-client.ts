@@ -94,3 +94,84 @@ export async function apiRequest<TResponse>(
 
   return payload as TResponse;
 }
+
+/**
+ * Multipart upload (FR-046).
+ *
+ * Separate from `apiRequest` because the `Content-Type` must be left UNSET:
+ * the browser generates `multipart/form-data` together with the boundary, and
+ * setting the header by hand omits the boundary and produces a body the server
+ * cannot parse. Sharing the helper and "just" overriding the header is exactly
+ * how that bug gets introduced.
+ */
+export async function apiUpload<TResponse>(path: string, file: File): Promise<TResponse> {
+  const form = new FormData();
+  form.append('file', file);
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    body: form,
+  });
+
+  const payload: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = payload as ApiErrorResponse | null;
+
+    if (response.status === 401) {
+      setAccessToken(null);
+    }
+
+    throw new ApiError(
+      response.status,
+      error?.code ?? 'UNKNOWN_ERROR',
+      error?.message ?? `HTTP ${response.status}`,
+      error?.details,
+    );
+  }
+
+  return payload as TResponse;
+}
+
+/**
+ * Fetches a file and hands it to the browser (FR-056).
+ *
+ * There is no URL to link to. Downloads are proxied through the API so the
+ * permission check runs every time (ADR-0003 S-2), which means the request
+ * needs the bearer token — and an `<a href>` cannot carry one. So the bytes
+ * are fetched, wrapped in an object URL, and clicked programmatically.
+ *
+ * The object URL is revoked immediately after; leaking one pins the whole file
+ * in memory for the life of the tab.
+ */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+
+    if (response.status === 401) {
+      setAccessToken(null);
+    }
+
+    throw new ApiError(
+      response.status,
+      error?.code ?? 'UNKNOWN_ERROR',
+      error?.message ?? `HTTP ${response.status}`,
+    );
+  }
+
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement('a');
+
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(url);
+}

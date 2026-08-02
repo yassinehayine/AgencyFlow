@@ -71,7 +71,7 @@ async function renderAs(user: AuthenticatedUser, project: ProjectDetail) {
   apiRequest.mockImplementation((path: string) => {
     if (path.startsWith('/projects/')) return Promise.resolve(project);
     if (path.startsWith('/users')) return Promise.resolve({ items: [], page: 1, totalPages: 1 });
-    if (path.startsWith('/tasks'))
+    if (path.startsWith('/tasks') || path.startsWith('/deliverables'))
       return Promise.resolve({ items: [], page: 1, pageSize: 100, totalItems: 0, totalPages: 1 });
     // Answering explicitly rather than falling through to null: an unhandled
     // path used to resolve `null`, and the page only survived because the
@@ -191,6 +191,25 @@ describe('ProjectDetailPage — BR-28, tasks are internal', () => {
     await vi.waitFor(() => {
       const paths = apiRequest.mock.calls.map((call) => String(call[0]));
       expect(paths.some((path) => path.startsWith('/tasks'))).toBe(true);
+    });
+  });
+});
+
+describe('ProjectDetailPage — FR-052, deliverables are the client-facing half', () => {
+  /**
+   * The deliberate contrast with tasks. A Client Contact is shown no task
+   * panel at all (BR-28) but MUST see deliverables — the approval loop is the
+   * entire reason they have an account.
+   */
+  it('requests deliverables for a Client Contact, and tasks for nobody', async () => {
+    await renderAs(CLIENT_USER, projectOf());
+
+    await screen.findByText(fr.projects.teamHiddenForClient);
+
+    await vi.waitFor(() => {
+      const paths = apiRequest.mock.calls.map((call) => String(call[0]));
+      expect(paths.some((path) => path.startsWith('/deliverables'))).toBe(true);
+      expect(paths.some((path) => path.startsWith('/tasks'))).toBe(false);
     });
   });
 });
