@@ -10,6 +10,7 @@ import { SecurityModule } from './core/security/security.module';
 import { StorageModule } from './core/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ClientsModule } from './modules/clients/clients.module';
+import { DashboardsModule } from './modules/dashboards/dashboards.module';
 import { DeliverablesModule } from './modules/deliverables/deliverables.module';
 import { HealthModule } from './modules/health/health.module';
 import { ProjectsModule } from './modules/projects/projects.module';
@@ -62,6 +63,9 @@ import { UsersModule } from './modules/users/users.module';
     ProjectsModule,
     TasksModule,
     DeliverablesModule,
+    // Last, and it stays last: the read model depends on the feature modules
+    // and nothing depends on it (05-Architecture §7, M-11).
+    DashboardsModule,
   ],
 })
 export class AppModule {}

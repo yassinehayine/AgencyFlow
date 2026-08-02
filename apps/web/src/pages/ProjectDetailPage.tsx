@@ -3,6 +3,7 @@ import type { ProjectDetail } from '@agencyflow/contracts';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { projectsPath } from '../app/routes';
 import { INPUT_CLASS } from '../components/shared/Field';
 import { QueryBoundary } from '../components/shared/QueryBoundary';
 import { StatusBadge } from '../components/shared/StatusBadge';
@@ -28,14 +29,29 @@ import { fr } from '../i18n/fr';
 import { ApiError } from '../lib/api-client';
 import { formatDate } from '../lib/format';
 
-/** FR-026 */
+/**
+ * FR-026. Mounted in BOTH route trees — `/app/projects/:id` and
+ * `/portal/projects/:id`.
+ *
+ * One component, because a project is the same record whoever is reading it,
+ * and the panels already decide for themselves what to show: the roster is
+ * absent for a client (BR-28), the task panel is not mounted at all, and the
+ * deliverables panel is. Two copies would be two places to forget one of those.
+ *
+ * The layout around it differs, which is what the two trees are for — and the
+ * gutters below are the portal's, since 375 px is the tighter constraint and
+ * the internal screens lose nothing by meeting it (NFR-08).
+ */
 export function ProjectDetailPage() {
   const { id = '' } = useParams();
+  const { user } = useAuth();
   const project = useProject(id);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
-      <Link to="/projects" className="text-sm text-slate-600 hover:text-slate-900">
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      {/* A client has no project LIST route — their dashboard is the list
+          (FR-071) — so "back" cannot be a constant. */}
+      <Link to={projectsPath(user)} className="text-sm text-slate-600 hover:text-slate-900">
         {fr.projects.backToList}
       </Link>
 

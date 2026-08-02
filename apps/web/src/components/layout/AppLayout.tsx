@@ -5,7 +5,12 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { fr } from '../../i18n/fr';
 
 /**
- * The authenticated shell (09-Frontend-Design.md section 2).
+ * The agency workspace shell — everything under `/app` (09-Frontend-Design §7).
+ *
+ * Built for a desk: staff work here all day on dense screens, so this trades
+ * touch targets and breathing room for information per screen. The client
+ * portal makes the opposite trade in `PortalLayout`, and optimising both for
+ * one viewport would have compromised both.
  *
  * Navigation shows only what the user's role can use. That is presentation
  * only — every hidden route is refused by the server independently (FR-003) —
@@ -30,22 +35,27 @@ export function AppLayout() {
       <header className="flex flex-wrap items-center gap-4 border-b border-slate-200 bg-white px-6 py-3">
         <span className="text-base font-semibold text-slate-900">{fr.common.appName}</span>
 
-        <nav className="flex gap-1" aria-label={fr.common.appName}>
-          {/* Visible to every role — the list itself is what differs. */}
-          <NavLink to="/projects" className={linkClass}>
+        <nav className="flex flex-wrap gap-1" aria-label={fr.common.appName}>
+          {/* First, and the landing page: every role gets a different
+              dashboard and each one leads with what needs them. */}
+          <NavLink to="/app/dashboard" className={linkClass}>
+            {fr.nav.dashboard}
+          </NavLink>
+          {/* Visible to every internal role — the list itself is what differs. */}
+          <NavLink to="/app/projects" className={linkClass}>
             {fr.nav.projects}
           </NavLink>
           {hasRole(Role.ADMINISTRATOR) && (
-            <NavLink to="/users" className={linkClass}>
+            <NavLink to="/app/users" className={linkClass}>
               {fr.nav.users}
             </NavLink>
           )}
           {hasRole(Role.ADMINISTRATOR, Role.PROJECT_MANAGER) && (
-            <NavLink to="/clients" className={linkClass}>
+            <NavLink to="/app/clients" className={linkClass}>
               {fr.nav.clients}
             </NavLink>
           )}
-          <NavLink to="/status" className={linkClass}>
+          <NavLink to="/app/status" className={linkClass}>
             {fr.nav.status}
           </NavLink>
         </nav>
