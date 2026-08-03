@@ -10,12 +10,13 @@
 interface ImportMetaEnv {
   /**
    * Origin of the API, WITHOUT a trailing slash — e.g.
-   * `https://agencyflow-api.onrender.com`.
+   * `https://agencyflow-api.up.railway.app`.
    *
    * Left empty in development: the Vite dev server proxies `/api` and `/health`
    * to localhost:3000, so a same-origin relative path is correct there. In
-   * production the web client is on Vercel and the API on Render, which are
-   * different origins, so the value is mandatory (docs/DEPLOYMENT.md).
+   * production the web client is on Vercel and the API on Railway (ADR-0006),
+   * which are different origins, so the value is mandatory
+   * (docs/DEPLOYMENT.md).
    */
   readonly VITE_API_URL?: string;
 }

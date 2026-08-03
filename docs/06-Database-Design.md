@@ -1242,7 +1242,7 @@ Every rule with a data-model consequence, and the structure that carries it.
 | ✅ Sufficient for realistic use | ~30 active projects ≈ 20 MB — well inside 512 MB (§13.2) |
 | ⚠️ Below the NFR-16 ceiling | The stated maxima would require ~1.2 GB. Documented limitation, accepted |
 | ⚠️ No automated backup on M0 | NFR-28 already declares backups best-effort. Reinforce in Phase 11 as a known limitation |
-| ⚠️ Network access | Render's free tier has no static egress IP, so the Atlas IP allowlist must permit `0.0.0.0/0`. **The database is therefore reachable from any address with valid credentials** — a real weakening of defence in depth. Mitigation: a strong generated password, least-privilege database user, and the connection string held only as an environment variable (NFR-25). Recorded as a known limitation for Phase 11 |
+| ⚠️ Network access | The API host has no static egress IP, so the Atlas IP allowlist must permit `0.0.0.0/0`. **The database is therefore reachable from any address with valid credentials** — a real weakening of defence in depth. Mitigation: a strong generated password, least-privilege database user, and the connection string held only as an environment variable (NFR-25). Recorded as a known limitation for Phase 11. *(Written against Render; unchanged when the backend moved to Railway — [ADR-0006](adr/0006-backend-hosting-platform.md) — which offers no static egress on its free or trial plans either.)* |
 
 ---
 

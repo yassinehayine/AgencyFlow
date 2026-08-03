@@ -8,8 +8,10 @@ import { HealthService } from './health.service';
  * Liveness and dependency status.
  *
  * Deliberately unauthenticated: it must answer before anyone can log in, and
- * it is what Render polls to decide whether the instance is up. It exposes no
- * business data — only whether the process and its two dependencies respond.
+ * it is what the host polls to decide whether the instance is up — Railway
+ * today (ADR-0006), and the path is named in `railway.toml` rather than known
+ * to it. It exposes no business data, only whether the process and its two
+ * dependencies respond.
  */
 @Controller('health')
 export class HealthController {

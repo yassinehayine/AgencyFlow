@@ -1,0 +1,68 @@
+# Railway configuration — AgencyFlow API (ADR-0006)
+#
+# Infrastructure as code rather than dashboard clicks: the deployment is
+# reviewable in a Pull Request, and rebuilding the service after a mistake is
+# a re-apply instead of an archaeology exercise.
+#
+# TOML rather than `railway.json` for one reason: comments. The three
+# decisions below each cost an afternoon to rediscover, and a JSON file
+# cannot explain itself.
+#
+# `05-Software-Architecture.md` §15, as amended by ADR-0006: Railway for the
+# NestJS API, Vercel for the web client, MongoDB Atlas M0 for the database.
+#
+# To apply: Railway -> New Project -> Deploy from GitHub repo. Railway reads
+# this file. The four secrets below are then set in the service's Variables
+# tab; they are secrets and must never reach this file (NFR-25).
+
+[build]
+builder = "RAILPACK"
+
+# `--include=dev` is not optional. NODE_ENV is `production` in the service
+# variables, and npm skips devDependencies whenever it is set — which would
+# remove @nestjs/cli and typescript, the two things the build needs most.
+#
+# The install is stated explicitly rather than left to the builder's detection
+# for exactly that reason: an inferred `npm ci` would inherit NODE_ENV and
+# fail later, at `nest build`, with a "not found" that points at the wrong
+# thing entirely.
+#
+# The contracts package is built explicitly before the API: it is a workspace
+# dependency resolved through a symlink, so its `dist` must exist before
+# `nest build` type-checks against it.
+buildCommand = "npm ci --include=dev && npm run build --workspace @agencyflow/contracts && npm run build --workspace @agencyflow/api"
+
+# Only redeploy the API when something it depends on changed. Without this,
+# every frontend commit rebuilds and restarts the backend — which on a metered
+# plan is credit spent to produce an identical artefact (AR-11).
+watchPatterns = [
+  "apps/api/**",
+  "packages/contracts/**",
+  "package.json",
+  "package-lock.json",
+  "railway.toml",
+]
+
+[deploy]
+# Run from the repository root so the workspace symlink in the root
+# node_modules resolves @agencyflow/contracts.
+startCommand = "node apps/api/dist/main.js"
+
+# Railway polls this path and holds the old deployment in place until it
+# answers, so a boot failure leaves the previous version serving rather than
+# taking the service down. `/health` is deliberately outside `/api/v1` so this
+# contract survives an API version bump (00-Project-Foundation §12.5).
+healthcheckPath = "/health"
+
+# Generous on purpose. The check has to cover `npm`-less cold boot, the
+# Mongoose connection to Atlas, and the first Cloudinary probe. A tight
+# timeout here fails a deployment that was merely slow, and the retry costs
+# more than the wait would have.
+healthcheckTimeout = 300
+
+# A crash is worth retrying — a bad deploy is not worth retrying forever.
+# `ALWAYS` would restart-loop on a genuine configuration error, burning
+# credits while producing the same failure (AR-11); the bounded count makes
+# the service stop and show it.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
