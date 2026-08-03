@@ -22,5 +22,8 @@
     "build": "npm run clean && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && npm run postbuild",
     "postbuild": "node -e \"require('node:fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'},null,2)); require('node:fs').writeFileSync('dist/cjs/package.json', JSON.stringify({type:'commonjs'},null,2));\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@agencyflow/config": "0.1.0"
   }
 }

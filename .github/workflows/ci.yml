@@ -69,3 +69,45 @@ jobs:
       - name: Gate 6 - Dependency audit
         run: npm audit --audit-level=high
         continue-on-error: true
+
+  # The gates above all run against a full workspace install on the runner's
+  # filesystem. That is not what ships. The deployed artefact is a container
+  # built from a PRUNED install, and every difference between the two is a
+  # place where CI can be green while the deploy is broken.
+  #
+  # Two real failures motivated this job, both invisible to the gates above:
+  #
+  #   - `@agencyflow/config` supplies the tsconfig every workspace extends,
+  #     and nothing declared it. A full install linked it by accident; a
+  #     pruned one did not, and the build failed on a missing tsconfig.
+  #   - the root `prepare` script runs `husky`, which is a devDependency.
+  #     `npm ci --omit=dev` therefore died with `husky: not found`.
+  #
+  # Neither could fail on a developer machine. Building the image is the only
+  # check that exercises what is actually deployed.
+  container:
+    name: API container builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the API image
+        run: docker build -f apps/api/Dockerfile -t agencyflow-api:ci .
+
+      # Boot it with no configuration. Reaching environment validation proves
+      # the whole module graph loaded — every Nest module, every Mongoose
+      # schema, and the compiled contracts package resolved through its
+      # workspace symlink. A missing dependency fails here, not at 3 a.m.
+      - name: Boot the image far enough to prove it is wired correctly
+        run: |
+          set +e
+          output=$(docker run --rm agencyflow-api:ci 2>&1)
+          echo "$output"
+          echo "$output" | grep -q "Invalid environment configuration" || {
+            echo "::error::Image did not reach environment validation — the module graph failed to load."
+            exit 1
+          }
+          echo "Reached environment validation as expected."

@@ -4,7 +4,7 @@
 
 | Component | Platform | Plan | Source of truth |
 |---|---|---|---|
-| API (NestJS) | **Railway** | Trial / Free | `railway.toml` |
+| API (NestJS) | **Railway** | Trial / Free | `railway.toml` + `apps/api/Dockerfile` |
 | Web (React/Vite) | Vercel | Hobby | `vercel.json` |
 | Database | MongoDB Atlas | M0 | Atlas dashboard |
 | File storage | Cloudinary | Free | Cloudinary dashboard |
@@ -61,7 +61,9 @@ Atlas clusters are replica sets, so transactions work — that is the requiremen
 
 ## 4. Step 2 — Railway API
 
-**railway.com → New Project → Deploy from GitHub repo → select the repository.** Railway reads `railway.toml`; the build command, start command and health check all come from there. Nothing is configured by hand except the variables.
+**railway.com → New Project → Deploy from GitHub repo → select the repository.** Railway reads `railway.toml`, which points it at `apps/api/Dockerfile`. Nothing is configured by hand except the variables.
+
+> **Why a Dockerfile and not Railway's automatic builder.** Railpack inspects the repository and configures itself from what it finds. It found the Vite frontend and mounted a build cache at `apps/web/node_modules/.vite` — for a service that never builds the frontend. `npm ci` begins by removing `node_modules`, a mount point cannot be removed, and the build died on `EBUSY: resource busy or locked, rmdir '/app/apps/web/node_modules/.vite'`. A backend build failing on a frontend path is a builder acting on a guess. The Dockerfile states what the image contains rather than leaving it to be inferred — see §11.
 
 ### 4.1 Variables
 
@@ -247,7 +249,53 @@ Deploys themselves **are** automated: Railway's GitHub integration and Vercel's 
 | Login returns 401 with correct credentials | The Administrator was never seeded, or was seeded into the *local* database | Re-run §7 with `MONGODB_URI` exported in the shell; the script is idempotent |
 | Seed reports "already exists" but login still fails | It connected to local MongoDB, not Atlas | Confirm the exported `MONGODB_URI` starts `mongodb+srv://` and names the `agencyflow` database |
 | Vercel build fails on the Node version | `engines.node` names a major Vercel does not offer | Vercel offers majors only (24.x, 22.x, 20.x); keep the range bounded and current |
+| `EBUSY … rmdir '/app/apps/web/node_modules/.vite'` | An automatic builder mounted a Vite cache into a backend build; `npm ci` cannot delete a mount point | Build from `apps/api/Dockerfile` (§11), which never puts the frontend in the context |
+| Container build fails, `husky: not found` | The root `prepare` script runs husky, a devDependency that `--omit=dev` correctly omits | `npm pkg delete scripts.prepare` before installing — already in the Dockerfile |
+| Container build fails, `tsconfig.base.json not found` | `@agencyflow/config` was not installed by a pruned install | It is now a declared devDependency of every workspace that extends it |
 | Railway deploy is green but the URL 404s or does not exist | No public domain was generated | Settings → Networking → **Generate Domain** (§4.2). Railway exposes nothing publicly by default |
 | Railway health check fails, logs show the app listening | The service bound a port Railway is not routing to | The app reads `PORT` from the environment; confirm `PORT` was **not** set by hand as a variable |
 | Service stops with no error and no crash in the logs | Railway credits exhausted (AR-11) | Check the usage page; the Free plan's $1/month will not sustain an always-on service |
 | Deploy fails, `MongooseServerSelectionError` at boot | Atlas was still provisioning, or the allowlist had not propagated | Wait for the cluster to report *Active*, then redeploy — `serverSelectionTimeoutMS` is 5 s by design, to fail fast rather than hang |
+
+
+---
+
+## 11. The API container
+
+The deployed artefact is an image built from `apps/api/Dockerfile`, from the **repository root** as the build context:
+
+```bash
+docker build -f apps/api/Dockerfile -t agencyflow-api .
+```
+
+Two stages. The first installs with `--include=dev` and builds; the second installs with `--omit=dev` and copies only the two `dist` directories across, so the shipped image carries no compiler, no test runner and no source.
+
+### 11.1 The pruned install
+
+```
+npm ci --include=dev --workspace @agencyflow/api --include-workspace-root
+```
+
+This is the line that matters, and it is why the frontend cannot interfere. It installs the API, the root's shared tooling, and the two packages the API depends on — and nothing for the web client, so `apps/web/node_modules` is never created and the `.vite` cache directory that broke the automatic builder has nowhere to exist.
+
+It also exposed a latent defect worth recording. `packages/config` supplies the `tsconfig.base.json` that **all three** other workspaces extend by bare specifier, and **nothing declared it as a dependency**. It resolved only because a full workspace install symlinks every workspace into `node_modules/@agencyflow/` whether anyone asked for it or not. The first pruned install failed on a missing tsconfig — a build held together by an accident of installation. It is now declared where it is used.
+
+### 11.2 Two things that only fail in a container
+
+| | |
+|---|---|
+| `prepare` runs `husky` | npm runs `prepare` after every install. Husky is a devDependency, so `--omit=dev` leaves it out and the install dies with `husky: not found`, exit 127 — from a line that says nothing about Git hooks. The Dockerfile deletes the script rather than setting `HUSKY=0`: that variable makes husky skip its work, but `prepare` would still try to execute a binary that is not installed |
+| Host `node_modules` leaking in | `COPY apps/api apps/api` would carry the host's `node_modules` and `dist` into the image on top of the ones just built — a Windows-built native module in a Debian container, and a stale `dist` shadowing the fresh one. `.dockerignore` prevents it; the failure would otherwise appear at runtime, far from its cause |
+
+### 11.3 Verified locally before deploying
+
+The image was built and run against the real Atlas cluster and the real Cloudinary account before the branch was pushed:
+
+```
+/health              -> {"status":"ok","dependencies":{"database":"up","storage":"up"}}
+/api/v1/health       -> 404   (the version prefix correctly excludes it)
+/api/v1/dashboard    -> 401   (unauthenticated)
+image contents       -> no vite, no .vite, no apps/web sources
+```
+
+CI now builds the image on every pull request and boots it with no configuration, asserting it reaches environment validation. That proves the whole module graph loaded — every Nest module, every Mongoose schema, and the compiled contracts package resolved through its workspace symlink. Both failures above were invisible to the other gates, because those run a full install on a normal filesystem, which is not what ships.
