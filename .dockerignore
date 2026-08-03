@@ -1,0 +1,35 @@
+# Keeps the build context to actual sources.
+#
+# This is not only about speed. `COPY apps/api apps/api` would otherwise carry
+# the HOST's `node_modules` and `dist` into the image, on top of the ones the
+# build just produced — a Windows-built native module landing in a Debian
+# container, and a stale `dist` silently shadowing the fresh one. The failure
+# would appear at runtime, far from its cause.
+
+node_modules
+**/node_modules
+
+dist
+**/dist
+**/.vite
+**/coverage
+
+.git
+.github
+.husky
+.env
+.env.*
+!.env.example
+
+# The web client is not part of the API image. Its manifest is copied
+# explicitly by the Dockerfile — npm needs every workspace manifest to plan
+# the tree — but none of its source or dependencies belong here.
+apps/web/src
+apps/web/public
+apps/web/index.html
+apps/web/vite.config.ts
+
+docs
+*.md
+.docker-data
+docker-compose.yml

@@ -4,39 +4,45 @@
 # reviewable in a Pull Request, and rebuilding the service after a mistake is
 # a re-apply instead of an archaeology exercise.
 #
-# TOML rather than `railway.json` for one reason: comments. The three
-# decisions below each cost an afternoon to rediscover, and a JSON file
-# cannot explain itself.
+# TOML rather than `railway.json` for one reason: comments. The decisions
+# below each cost an afternoon to rediscover, and a JSON file cannot explain
+# itself.
 #
 # `05-Software-Architecture.md` §15, as amended by ADR-0006: Railway for the
 # NestJS API, Vercel for the web client, MongoDB Atlas M0 for the database.
 #
 # To apply: Railway -> New Project -> Deploy from GitHub repo. Railway reads
-# this file. The four secrets below are then set in the service's Variables
-# tab; they are secrets and must never reach this file (NFR-25).
+# this file. The secrets are then set in the service's Variables tab; they are
+# secrets and must never reach this file (NFR-25).
 
 [build]
-builder = "RAILPACK"
-
-# `--include=dev` is not optional. NODE_ENV is `production` in the service
-# variables, and npm skips devDependencies whenever it is set — which would
-# remove @nestjs/cli and typescript, the two things the build needs most.
+# DOCKERFILE, not the automatic builder, and this is the fix for a real
+# failure rather than a preference.
 #
-# The install is stated explicitly rather than left to the builder's detection
-# for exactly that reason: an inferred `npm ci` would inherit NODE_ENV and
-# fail later, at `nest build`, with a "not found" that points at the wrong
-# thing entirely.
+# Railpack inspects the repository and configures itself from what it finds.
+# It found the Vite frontend and mounted a build cache at
+# `apps/web/node_modules/.vite` — for a service that never builds the
+# frontend. `npm ci` begins by removing `node_modules`, a mount point cannot
+# be removed, and every build died on:
 #
-# The contracts package is built explicitly before the API: it is a workspace
-# dependency resolved through a symlink, so its `dist` must exist before
-# `nest build` type-checks against it.
-buildCommand = "npm ci --include=dev && npm run build --workspace @agencyflow/contracts && npm run build --workspace @agencyflow/api"
+#     EBUSY: resource busy or locked, rmdir '/app/apps/web/node_modules/.vite'
+#
+# A backend build failing on a frontend path is a builder acting on a guess
+# about a repository it only half understands. The Dockerfile states what the
+# image contains instead of leaving it to be inferred: the frontend is not
+# skipped, it is never in the build context.
+builder = "DOCKERFILE"
+dockerfilePath = "apps/api/Dockerfile"
 
-# Only redeploy the API when something it depends on changed. Without this,
-# every frontend commit rebuilds and restarts the backend — which on a metered
-# plan is credit spent to produce an identical artefact (AR-11).
+# Only rebuild when something the API depends on changed. Without this, every
+# frontend commit rebuilds and restarts the backend — on a metered plan,
+# credit spent to produce a byte-identical image (AR-11).
+#
+# `apps/web` is deliberately absent, which is now enforced twice: by this list
+# and by `.dockerignore`.
 watchPatterns = [
   "apps/api/**",
+  "packages/config/**",
   "packages/contracts/**",
   "package.json",
   "package-lock.json",
@@ -44,9 +50,9 @@ watchPatterns = [
 ]
 
 [deploy]
-# Run from the repository root so the workspace symlink in the root
-# node_modules resolves @agencyflow/contracts.
-startCommand = "node apps/api/dist/main.js"
+# No `startCommand`. The Dockerfile's CMD is the single definition of how this
+# image starts; repeating it here would create two, and the one that is wrong
+# is always the one nobody edited.
 
 # Railway polls this path and holds the old deployment in place until it
 # answers, so a boot failure leaves the previous version serving rather than
@@ -54,10 +60,9 @@ startCommand = "node apps/api/dist/main.js"
 # contract survives an API version bump (00-Project-Foundation §12.5).
 healthcheckPath = "/health"
 
-# Generous on purpose. The check has to cover `npm`-less cold boot, the
-# Mongoose connection to Atlas, and the first Cloudinary probe. A tight
-# timeout here fails a deployment that was merely slow, and the retry costs
-# more than the wait would have.
+# Generous on purpose. The check has to cover container start, the Mongoose
+# connection to Atlas, and the first Cloudinary probe. A tight timeout fails a
+# deployment that was merely slow, and the retry costs more than the wait.
 healthcheckTimeout = 300
 
 # A crash is worth retrying — a bad deploy is not worth retrying forever.
