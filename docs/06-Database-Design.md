@@ -1228,7 +1228,7 @@ Every rule with a data-model consequence, and the structure that carries it.
 
 | ID | Open question | Needed by |
 |---|---|---|
-| ~~OQ-06~~ | ✅ **RESOLVED 2026-07-30.** MongoDB Atlas **M0 Free** · Cloudinary Free · Render (backend) · Vercel (frontend). The §13.2 scalability limits are accepted for an internship deliverable | Closed |
+| ~~OQ-06~~ | ✅ **RESOLVED 2026-07-30.** MongoDB Atlas **M0 Free** · Cloudinary Free · ~~Render~~ **Railway** (backend; changed 2026-08-03, [ADR-0006](adr/0006-backend-hosting-platform.md)) · Vercel (frontend). The §13.2 scalability limits are accepted for an internship deliverable | Closed |
 | ~~OQ-12~~ | ✅ **RESOLVED 2026-07-30.** `skill` remains a **fixed enum** on the User entity (§6, A-01). No `skills` collection in v1; it can be introduced later without disturbing the model, since the field would change from an enum string to an `ObjectId` reference | Closed |
 | **OQ-13** | Should `activities` have a retention policy in v1? **Recommendation: no** — accept growth, document the limitation | Phase 10 |
 

@@ -1052,7 +1052,7 @@ Under a compressed schedule you *will* take shortcuts. Documenting them converts
 
 | Tool | Version | Purpose | Why this one |
 |---|---|---|---|
-| **Node.js** | **24 LTS** | Runtime | LTS = security support through the project and beyond. Never use an odd/current release for a project you intend to deploy. **Amended 2026-07-30:** originally specified as 22 LTS; the development machine runs 24.14.0, which entered LTS in October 2025 and is supported by NestJS 11, Vite, and Render. Pinned in `.nvmrc` |
+| **Node.js** | **24 LTS** | Runtime | LTS = security support through the project and beyond. Never use an odd/current release for a project you intend to deploy. **Amended 2026-07-30:** originally specified as 22 LTS; the development machine runs 24.14.0, which entered LTS in October 2025 and is supported by NestJS 11, Vite, and the deployment platform. Pinned in `.node-version` and `.nvmrc`, and bounded in `engines.node` — three pins because the host, the CI runner and Vercel each read a different one |
 | **npm** | 10+ | Package manager + workspaces | Ships with Node; workspaces built in; zero extra tooling (§5.5) |
 | **Git** | 2.4x+ | Version control | — |
 | **MongoDB** | 7.x | Database | Fixed requirement |
