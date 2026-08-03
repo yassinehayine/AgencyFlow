@@ -30,10 +30,14 @@ flowchart LR
     A[1 · Atlas cluster] --> B[2 · Render API]
     B -->|API URL| C[3 · Vercel web]
     C -->|Vercel URL| D[4 · Set CORS_ORIGIN<br/>on Render]
-    D --> E[5 · Verify]
+    A --> S[5 · Seed the Administrator]
+    D --> E[6 · Verify]
+    S --> E
 ```
 
 Steps 2 and 3 each need the other's URL, which is why `CORS_ORIGIN` is set *after* Vercel exists, as a separate step. There is no ordering that avoids this; the loop is closed by deploying with a placeholder and correcting it.
+
+Step 5 depends only on Atlas, so it can be done any time after step 1 — but it is not optional, and skipping it produces a fully working deployment that **nobody can log into**. See §7.
 
 ---
 
@@ -111,7 +115,48 @@ Return to Render and set `CORS_ORIGIN` to the real Vercel production origin, e.g
 
 ---
 
-## 7. Step 5 — Verification checklist
+## 7. Step 5 — Seed the first Administrator
+
+**Without this step the deployment is complete and unusable.** FR-007 and BR-11 mean there is no registration endpoint: every account exists because an Administrator created it. A fresh Atlas database has no Administrator, so there is no first door — which is what `apps/api/scripts/seed-admin.js` exists to be. It is deliberately outside the HTTP surface: nothing reachable over the network can create an Administrator from nothing.
+
+Render's free plan has no shell, so the seed is run **from a developer machine against Atlas**. That is not a workaround: the script needs credentials that the platform holds as secrets, and running it locally keeps the one privileged operation in the hands of a person rather than in a deploy hook.
+
+```powershell
+npm run build --workspace @agencyflow/contracts
+npm run build --workspace @agencyflow/api
+
+# The whole application boots, so every variable it validates must be present.
+$env:MONGODB_URI       = "<the Atlas string from step 1>"
+$env:JWT_SECRET        = "any-value-at-least-32-characters-long-unused-here"
+$env:CLOUDINARY_URL    = "<the same value given to Render>"
+$env:CORS_ORIGIN       = "https://placeholder.local"
+
+$env:SEED_ADMIN_NAME     = "Your Name"
+$env:SEED_ADMIN_USERNAME = "your.name"
+$env:SEED_ADMIN_EMAIL    = "you@agencyflow.ma"
+$env:SEED_ADMIN_PASSWORD = "<a real password, 8+ characters>"
+
+npm run seed:admin --workspace @agencyflow/api
+```
+
+Three things worth stating precisely, because each one has a silent failure mode:
+
+- **`process.env` overrides the repository's `.env` file.** `@nestjs/config` does not let a file overwrite a variable that is already set, so exporting `MONGODB_URI` above genuinely redirects the seed at Atlas. Verified rather than assumed — the failure it prevents is seeding the *local* database and believing production is ready.
+- **`JWT_SECRET` and `CORS_ORIGIN` are placeholders here.** The script signs nothing and serves nothing; they are present only because boot-time validation refuses to start without them. Do **not** copy Render's generated `JWT_SECRET` onto a laptop to satisfy a check that does not use it.
+- **The script is idempotent.** If an active Administrator already exists it changes nothing and exits 0, so re-running it after a failed attempt is safe.
+
+Expected output:
+
+```
+Administrator created: you@agencyflow.ma (username: your.name)
+Log in through the web client and create the rest of the team from there.
+```
+
+Every other account — Project Managers, Team Members, client organisations and their contacts — is then created through the interface, which is the rule this whole arrangement exists to preserve.
+
+---
+
+## 8. Step 6 — Verification checklist
 
 Run these in order. Each one isolates a different failure.
 
@@ -123,15 +168,22 @@ Run these in order. Each one isolates a different failure.
 | 4 | Versioning intact | `curl https://<api>/api/v1/health` → **404** | The global prefix excludes `/health` as designed |
 | 5 | Web client loads | Open the Vercel URL | Vite build and output directory are correct |
 | 6 | **Cross-origin call succeeds** | The status page shows the API's health, not an error | `CORS_ORIGIN` matches the Vercel origin exactly |
-| 7 | **Cold start is handled** | Wait 15+ minutes, then reload the status page | AR-09: the client shows the waking message, not a failure |
+| 7 | **Login works** | Sign in with the seeded Administrator | Step 5 ran, and JWT signing works with Render's generated secret |
+| 8 | Role routing | An Administrator lands on `/app/dashboard` | The two route trees resolve behind Vercel's SPA rewrite |
+| 9 | Deep link survives refresh | Reload while on `/app/projects` | The `rewrites` rule is serving `index.html` rather than 404 |
+| 10 | **Upload and download** | Attach a file to a deliverable, then download it | Cloudinary write path *and* the proxied read (ADR-0003 S-2) |
+| 11 | **Client isolation** | Log in as a Client Contact of one organisation | BR-10 holds across the real network, not only in tests |
+| 12 | **Cold start is handled** | Wait 15+ minutes, then reload the status page | AR-09: the client shows the waking message, not a failure |
 
 Check 6 is the one that catches the classic mistake. A trailing slash, `http` instead of `https`, or the preview URL instead of the production URL all produce the same browser console message: *blocked by CORS policy*. The API log will show the origin it actually received; compare the two strings character by character.
 
-Check 7 matters because Render's free tier suspends an idle service after roughly 15 minutes, and the next request pays a 30–60 second wake-up. `QueryBoundary` swaps the spinner for an explanatory French message after 5 seconds precisely for this (AR-09). A user who sees a frozen screen concludes the application is broken; a user who is told the server is waking waits.
+Check 10 is worth doing by hand even though the slice-5 script covers it locally, because it is the only check that exercises a **third** external service across the real network. A Cloudinary credential that survived the copy into Render still has to work from Frankfurt, and the download half proves the proxy rather than a provider URL — the guarantee ADR-0003 S-2 rests on.
+
+Check 12 matters because Render's free tier suspends an idle service after roughly 15 minutes, and the next request pays a 30–60 second wake-up. `QueryBoundary` swaps the spinner for an explanatory French message after 5 seconds precisely for this (AR-09). A user who sees a frozen screen concludes the application is broken; a user who is told the server is waking waits.
 
 ---
 
-## 8. What is deliberately not automated
+## 9. What is deliberately not automated
 
 | Not automated | Why |
 |---|---|
@@ -143,7 +195,7 @@ Deploys themselves **are** automated: `autoDeploy: true` on Render and Vercel's 
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -155,3 +207,7 @@ Deploys themselves **are** automated: `autoDeploy: true` on Render and Vercel's 
 | Web shows a JSON parse error | `VITE_API_URL` unset in the Vercel build | The client requested Vercel's own domain and received `index.html` |
 | Blocked by CORS policy | `CORS_ORIGIN` does not match byte for byte | Compare the origin in the Render log with the browser's; watch for a trailing slash |
 | First request of the day times out | Render free-tier cold start | Expected (AR-09). The client waits; the timeout must not be shortened |
+| Login returns 401 with correct credentials | The Administrator was never seeded, or was seeded into the *local* database | Re-run §7 with `MONGODB_URI` exported in the shell; the script is idempotent |
+| Seed reports "already exists" but login still fails | It connected to local MongoDB, not Atlas | Confirm the exported `MONGODB_URI` starts `mongodb+srv://` and names the `agencyflow` database |
+| Vercel build fails on the Node version | `engines.node` names a major Vercel does not offer | Vercel offers majors only (24.x, 22.x, 20.x); keep the range bounded and current |
+| Deploy fails, `MongooseServerSelectionError` at boot | Atlas was still provisioning, or the allowlist had not propagated | Wait for the cluster to report *Active*, then redeploy — `serverSelectionTimeoutMS` is 5 s by design, to fail fast rather than hang |
