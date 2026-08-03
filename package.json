@@ -5,7 +5,7 @@
   "description": "Centralized project delivery and client approval platform for a digital agency",
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=24.0.0",
+    "node": "24.x",
     "npm": ">=10.0.0"
   },
   "workspaces": [
