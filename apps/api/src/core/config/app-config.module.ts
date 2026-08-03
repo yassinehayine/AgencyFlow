@@ -21,7 +21,7 @@ import { validateEnv } from './env.validation';
       validate: validateEnv,
       // Checked in order, first match wins. `apps/api/.env` allows the API to
       // be configured on its own; `../../.env` is the shared monorepo file
-      // used in local development. In production neither exists — Render
+      // used in local development. In production neither exists — Railway
       // supplies the variables directly, and validation is identical.
       envFilePath: ['.env', '../../.env'],
     }),

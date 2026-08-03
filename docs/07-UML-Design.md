@@ -1404,7 +1404,7 @@ flowchart TB
         W2 --> W3
     end
 
-    subgraph API["«component» API Application (Render)"]
+    subgraph API["«component» API Application (Railway)"]
         subgraph HTTP["«subsystem» HTTP Layer"]
             H1["«component» Guards<br/>Jwt · Roles · Policy"]
             H2["«component» Pipes<br/>Validation · FileValidation"]
@@ -1573,7 +1573,7 @@ flowchart TB
         VNODE --- VART
     end
 
-    subgraph RENDER["«device» Render — Web Service (free tier)"]
+    subgraph RENDER["«device» Railway — service (trial / free)"]
         NODE["«execution environment»<br/>Node.js 24 LTS"]
         APIART["«artifact»<br/>agencyflow-api<br/><i>NestJS build</i>"]
         NODE --- APIART
@@ -1609,16 +1609,16 @@ flowchart TB
 |---|---|---|
 | User Device | Browser | Holds the JWT. **No authorization logic** — it hides controls for usability only (NFR-20) |
 | Vercel | Static CDN | No SSR. Global edge distribution |
-| **Render** | Node.js 24 LTS | **Single instance. Sleeps after ~15 min idle → 30–60 s cold start (AR-09)** |
+| **Railway** | Node.js 24 LTS | **Single instance. Does not sleep (ADR-0006); stops outright when credits are exhausted (AR-11)** |
 | MongoDB Atlas M0 | 3-node replica set | Transactions available. `0.0.0.0/0` allowlist required (AR-10) |
-| Cloudinary | Object storage | **Reached only from Render, never from the browser** (ADR-0003) |
+| Cloudinary | Object storage | **Reached only from the API node, never from the browser** (ADR-0003) |
 | GitHub Actions | CI runner | Lint · type-check · test · build · deploy |
 
 ### 9.2 The critical topology fact
 
 > **No arrow runs from the browser to Cloudinary or to MongoDB.**
 >
-> Every byte of data and every file passes through the Render node, where the `AccessScope` is applied. If such an arrow existed, BR-10 would be unenforceable regardless of how the application code were written — architecture would have defeated it before the first line was typed.
+> Every byte of data and every file passes through the API node, where the `AccessScope` is applied. If such an arrow existed, BR-10 would be unenforceable regardless of how the application code were written — architecture would have defeated it before the first line was typed.
 
 ---
 
@@ -1694,7 +1694,7 @@ Every UML artefact was checked against its source. Discrepancies are defects, no
 | 17 | Client dashboard carries no task data | BR-28 | ✅ SD-10 closing note |
 | 18 | `storageKey` never serialized to a client | ADR-0003 | ✅ CD-2 private; SD-9 closing note |
 | 19 | Three status enums kept separate | `06-DB` §6 | ✅ CD-6 |
-| 20 | Deployment matches the approved providers | `05-Arch` §15 | ✅ Vercel · Render · Atlas M0 · Cloudinary |
+| 20 | Deployment matches the approved providers | `05-Arch` §15 | ✅ Vercel · Railway (ADR-0006) · Atlas M0 · Cloudinary |
 
 **20 of 20 consistency checks pass. No contradictions found between the UML model and the approved baseline.**
 

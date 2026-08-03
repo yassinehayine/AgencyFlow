@@ -1228,7 +1228,7 @@ Every rule with a data-model consequence, and the structure that carries it.
 
 | ID | Open question | Needed by |
 |---|---|---|
-| ~~OQ-06~~ | ✅ **RESOLVED 2026-07-30.** MongoDB Atlas **M0 Free** · Cloudinary Free · Render (backend) · Vercel (frontend). The §13.2 scalability limits are accepted for an internship deliverable | Closed |
+| ~~OQ-06~~ | ✅ **RESOLVED 2026-07-30.** MongoDB Atlas **M0 Free** · Cloudinary Free · ~~Render~~ **Railway** (backend; changed 2026-08-03, [ADR-0006](adr/0006-backend-hosting-platform.md)) · Vercel (frontend). The §13.2 scalability limits are accepted for an internship deliverable | Closed |
 | ~~OQ-12~~ | ✅ **RESOLVED 2026-07-30.** `skill` remains a **fixed enum** on the User entity (§6, A-01). No `skills` collection in v1; it can be introduced later without disturbing the model, since the field would change from an enum string to an `ObjectId` reference | Closed |
 | **OQ-13** | Should `activities` have a retention policy in v1? **Recommendation: no** — accept growth, document the limitation | Phase 10 |
 
@@ -1242,7 +1242,7 @@ Every rule with a data-model consequence, and the structure that carries it.
 | ✅ Sufficient for realistic use | ~30 active projects ≈ 20 MB — well inside 512 MB (§13.2) |
 | ⚠️ Below the NFR-16 ceiling | The stated maxima would require ~1.2 GB. Documented limitation, accepted |
 | ⚠️ No automated backup on M0 | NFR-28 already declares backups best-effort. Reinforce in Phase 11 as a known limitation |
-| ⚠️ Network access | Render's free tier has no static egress IP, so the Atlas IP allowlist must permit `0.0.0.0/0`. **The database is therefore reachable from any address with valid credentials** — a real weakening of defence in depth. Mitigation: a strong generated password, least-privilege database user, and the connection string held only as an environment variable (NFR-25). Recorded as a known limitation for Phase 11 |
+| ⚠️ Network access | The API host has no static egress IP, so the Atlas IP allowlist must permit `0.0.0.0/0`. **The database is therefore reachable from any address with valid credentials** — a real weakening of defence in depth. Mitigation: a strong generated password, least-privilege database user, and the connection string held only as an environment variable (NFR-25). Recorded as a known limitation for Phase 11. *(Written against Render; unchanged when the backend moved to Railway — [ADR-0006](adr/0006-backend-hosting-platform.md) — which offers no static egress on its free or trial plans either.)* |
 
 ---
 

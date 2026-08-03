@@ -314,9 +314,12 @@ export const fr = {
   /**
    * Displayed while the first request is in flight for an unusually long time.
    *
-   * Render's free tier sleeps after ~15 minutes idle, so a cold start can take
-   * 30-60 seconds (AR-09). Without this message the application simply looks
-   * broken, which during a demonstration is indistinguishable from a failure.
+   * Railway keeps the service running (ADR-0006), so the routine 15-minute
+   * sleep this was written for is gone. It still earns its place: the first
+   * request after a deploy waits on the Atlas connection, and a stopped
+   * service takes just as long to come back. Without this message the
+   * application simply looks broken, which during a demonstration is
+   * indistinguishable from a failure (AR-09).
    */
   coldStart: {
     message: 'Démarrage du serveur en cours, cela peut prendre jusqu’à une minute…',

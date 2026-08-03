@@ -289,9 +289,11 @@ Every data-driven view handles **loading · empty · error · success**. This is
 
 Mutations: optimistic disable of the trigger, French toast on success, inline error on failure.
 
-### 9.2 🔴 The Render cold start
+### 9.2 The cold start
 
-`05-Architecture` AR-09: the free-tier backend sleeps after ~15 minutes idle, so the **first request can take 30–60 seconds**. Left unhandled, the login screen looks broken during a demonstration.
+> **Amended 2026-08-03 by [ADR-0006](adr/0006-backend-hosting-platform.md).** The backend moved to Railway, which does **not** sleep an idle service, so the routine 15-minute suspension described below no longer occurs. The required behaviour is unchanged and still earns its place: the first request after a deploy waits on the Atlas connection, and a service stopped for exhausted credits (AR-11) takes just as long to return.
+
+`05-Architecture` AR-09, as originally written against the Render free tier: the backend sleeps after ~15 minutes idle, so the **first request can take 30–60 seconds**. Left unhandled, the login screen looks broken during a demonstration.
 
 > **Required behaviour on the login screen:** if the first request exceeds ~5 seconds, replace the spinner with an honest message — *« Démarrage du serveur en cours, cela peut prendre jusqu'à une minute… »* — and do not time out before ~90 seconds.
 >

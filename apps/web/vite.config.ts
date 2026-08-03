@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5173,
     // Proxying /api in development means the browser sees one origin, so no
     // CORS preflight locally. Production uses the real cross-origin setup
-    // (Vercel -> Render), which the API allows explicitly via CORS_ORIGIN.
+    // (Vercel -> Railway), which the API allows explicitly via CORS_ORIGIN.
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

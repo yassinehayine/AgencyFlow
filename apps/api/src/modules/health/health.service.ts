@@ -38,7 +38,7 @@ export class HealthService {
 
   /**
    * Mongoose reports connection state in memory, so this costs nothing and is
-   * safe to call on every request — including Render's frequent health probes.
+   * safe to call on every request — including the platform's frequent probes.
    */
   private checkDatabase(): DependencyStatus {
     return this.connection.readyState === 1 ? DependencyStatus.UP : DependencyStatus.DOWN;

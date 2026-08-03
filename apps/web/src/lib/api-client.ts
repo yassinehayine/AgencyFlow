@@ -10,7 +10,7 @@ import type { ApiErrorResponse } from '@agencyflow/contracts';
  * Origin of the API.
  *
  * Empty in development, where the Vite proxy makes the API same-origin. In
- * production Vercel serves the client and Render serves the API, so a relative
+ * production Vercel serves the client and Railway serves the API, so a relative
  * path would resolve against the Vercel domain and return `index.html` instead
  * of JSON — the failure looks like a JSON parse error and hides its own cause.
  *

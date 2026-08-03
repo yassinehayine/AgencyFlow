@@ -632,10 +632,12 @@ Fully specified in **ADR-0004**; detailed schemas and indexes are Phase 4.
 
 **Providers confirmed 2026-07-30 (OQ-06 closed).** Pipeline detail remains Phase 10.
 
+> **Amended 2026-08-03 by [ADR-0006](adr/0006-backend-hosting-platform.md).** The backend moved from **Render** to **Railway** at first deployment, when Render's free tier stopped hosting a web service without a paid plan. Frontend, database and file storage are unchanged, and **no application code changed** — the API already read `PORT` from the environment and bound `0.0.0.0` so the host could be swapped. The consequences below are marked where they moved.
+
 ```mermaid
 flowchart LR
     U(["Users"]) -->|HTTPS| VER["<b>Vercel</b><br/>React SPA<br/><i>global CDN</i>"]
-    U -->|HTTPS / JSON| REN["<b>Render</b><br/>NestJS Web Service<br/><i>free tier, single instance</i>"]
+    U -->|HTTPS / JSON| REN["<b>Railway</b><br/>NestJS service<br/><i>single instance, always on</i>"]
     VER -.->|API base URL| REN
     REN --> ATLAS[("<b>MongoDB Atlas M0</b><br/><i>3-node replica set</i>")]
     REN --> CL[("<b>Cloudinary</b><br/><i>file storage</i>")]
@@ -646,7 +648,7 @@ flowchart LR
 | Aspect | Decision |
 |---|---|
 | Frontend | **Vercel** — static SPA build on a global CDN. No SSR required |
-| Backend | **Render** Web Service, free tier. Single instance, no load balancer (NFR-27) |
+| Backend | **Railway** service (ADR-0006). Single instance, no load balancer (NFR-27) |
 | Database | **MongoDB Atlas M0** — a 3-node replica set, so transactions work (§12) |
 | Files | **Cloudinary** (ADR-0003) |
 | CI/CD | GitHub Actions; deploy on merge to `main` |
@@ -656,7 +658,11 @@ flowchart LR
 
 ### 15.1 Free-tier consequences — three that matter
 
-**① 🔴 Render free services sleep after ~15 minutes of inactivity.**
+**① ~~🔴 Render free services sleep after ~15 minutes of inactivity.~~ — largely resolved by ADR-0006.**
+
+> Railway does **not** sleep an idle service, so the 30–60 second wake-up described below no longer occurs routinely. The paragraph is kept because the mitigations remain correct for the first request after a deploy, and because AR-09 was the risk that shaped `QueryBoundary`. What replaces it is **AR-11**: Railway meters usage instead of sleeping, so the service stays responsive until its credits run out and then stops outright.
+
+Historically, on the Render free tier:
 The first request after idle triggers a cold start that can take **30–60 seconds**. During a defence or demonstration this looks exactly like a broken application.
 
 > **Mitigations, in order of value:**
@@ -666,10 +672,10 @@ The first request after idle triggers a cold start that can take **30–60 secon
 >
 > This is recorded as **AR-09** because a demonstration failure is, for an internship deliverable, indistinguishable from a product failure.
 
-**② Render's free tier has no persistent disk.**
-This independently confirms ADR-0003: local-disk storage would have lost every uploaded file on each redeploy. The storage decision was correct before the platform was chosen, and the platform choice now makes it mandatory.
+**② The free tier has no persistent disk — on Render or on Railway.**
+This independently confirms ADR-0003: local-disk storage would have lost every uploaded file on each redeploy. The storage decision was correct before the platform was chosen, and it survived the platform *changing* — ADR-0003 already named Railway among the platforms with ephemeral filesystems, because it was decided against the class of host rather than one vendor.
 
-**③ Render free has no static egress IP**, so the Atlas allowlist must permit `0.0.0.0/0`.
+**③ Neither Render free nor Railway offers a static egress IP**, so the Atlas allowlist must permit `0.0.0.0/0`. **Unchanged by ADR-0006.**
 The database is therefore reachable from any address holding valid credentials. Mitigated by a strong generated password, a least-privilege database user, and the connection string kept solely in environment variables (NFR-25) — but it is a genuine reduction in defence in depth and is recorded as a known limitation for Phase 11.
 
 > ⚠️ **Deploy a hello-world through this entire path in Week 1** (RISK-04), including one Cloudinary upload (ADR-0003). Deployment is the phase most likely to fail late, and it is the one failure that makes the project undemonstrable.
@@ -725,8 +731,9 @@ How the architecture satisfies the ranked attributes. Each is measurable in Phas
 | **AR-06** | Progress aggregation too slow on the Admin dashboard | Low | Medium | Measured migration trigger to counters (ADR-0004 §3) |
 | **AR-07** | Timezone boundary errors in due-soon/overdue | Medium | Medium | UTC storage, Casablanca boundary evaluation (§12) |
 | **AR-08** | Two UI faces diverge into duplicated components | Medium | Low | One SPA, shared component layer (§5.2) |
-| **AR-09** | **Render cold start makes the demo look broken** | **High** | **High** | Warm the instance before any demonstration; honest loading state; documented (§15.1) |
-| **AR-10** | Atlas `0.0.0.0/0` allowlist required by Render's dynamic egress | Certain | Medium | Strong credentials, least-privilege user, env-var-only connection string (§15.1) |
+| **AR-09** | ~~**Render cold start makes the demo look broken**~~ — reduced by ADR-0006 | Low | **High** | Railway does not sleep; honest loading state retained for post-deploy boots (§15.1) |
+| **AR-10** | Atlas `0.0.0.0/0` allowlist required by the host's dynamic egress | Certain | Medium | Strong credentials, least-privilege user, env-var-only connection string (§15.1) |
+| **AR-11** | **Railway credits run out and the service stops — silently, and closed** | Medium | **High** | Check usage before any demonstration; $5 Hobby plan restores a month without moving platform (ADR-0006) |
 
 ---
 
@@ -738,7 +745,7 @@ How the architecture satisfies the ranked attributes. Each is measurable in Phas
 | **OQ-04** | Internship evaluation criteria — documentation-weighted or demo-weighted? | Effort allocation | Immediate |
 | **OQ-05** | Is a defence required, and on what date? | Phase 11 | Immediate |
 | ~~OQ-09~~ | ✅ Resolved 2026-07-30 — private during development; public only at a stable, presentable version | — | Closed |
-| ~~OQ-06~~ | ✅ Resolved 2026-07-30 — Vercel · Render · Atlas M0 · Cloudinary (§15) | — | Closed |
+| ~~OQ-06~~ | ✅ Resolved 2026-07-30 — Vercel · ~~Render~~ **Railway** (ADR-0006, 2026-08-03) · Atlas M0 · Cloudinary (§15) | — | Closed |
 | ~~OQ-11~~ | ✅ Resolved — ADR-0003 | — | Closed |
 | ~~OQ-12~~ | ✅ Resolved 2026-07-30 — `skill` stays a fixed enum on User; no `skills` collection in v1 | — | Closed |
 
