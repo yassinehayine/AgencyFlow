@@ -51,15 +51,18 @@ COPY apps/web/package.json apps/web/
 # `--workspace @agencyflow/api --include-workspace-root` installs the API, the
 # root's shared tooling, and the two packages the API depends on — and nothing
 # for the web client. That is what keeps `apps/web/node_modules` from existing.
-# `npm pkg delete scripts.prepare` first. The root `prepare` script runs
-# `husky`, which installs Git hooks — meaningless in an image that has no
-# `.git`, and fatal in the runtime stage below where husky is a devDependency
-# that `--omit=dev` correctly leaves out. It fails as `husky: not found`,
-# exit 127, from a line that says nothing about hooks.
+# `npm pkg delete scripts.prepare` first, and this is NOT redundant with the
+# guard in `.husky/install.mjs`. Do not remove it on the assumption that it is.
 #
-# Deleted rather than suppressed with `HUSKY=0`: that variable makes husky
-# skip its work, but the `prepare` script still tries to EXECUTE a binary that
-# is not installed, so it would fix the build stage and not the runtime one.
+# That guard skips when `CI`, `VERCEL`, `RAILWAY_ENVIRONMENT` or
+# `NODE_ENV=production` is set. **None of them is set inside a `docker build`**
+# — this stage deliberately leaves `NODE_ENV` unset so npm keeps
+# devDependencies — so the guard would not fire, `prepare` would run, and
+# `node .husky/install.mjs` would fail with MODULE_NOT_FOUND because
+# `.dockerignore` correctly keeps `.husky` out of the build context.
+#
+# Git hooks have no meaning in an image that has no `.git`. Deleting the
+# script says that, and says it once.
 RUN npm pkg delete scripts.prepare \
  && npm ci --include=dev --workspace @agencyflow/api --include-workspace-root
 

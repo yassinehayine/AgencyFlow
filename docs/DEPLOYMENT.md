@@ -129,7 +129,7 @@ This is the one setting that is easy to get wrong. Pointing Root Directory at `a
 
 | Setting | Value | Why |
 |---|---|---|
-| `installCommand` | `npm ci` | Installs the whole workspace tree, including the symlink to `contracts` |
+| `installCommand` | `npm ci --include=dev` | Installs the whole workspace tree, including the symlink to `contracts`. **`--include=dev` is mandatory** — see below |
 | `buildCommand` | contracts, then web | `contracts` must emit its ESM `dist` before Vite can resolve it |
 | `outputDirectory` | `apps/web/dist` | Vite's output, relative to the repository root |
 | `rewrites` | everything → `/index.html` | Client-side routing: a deep link must not 404 on refresh. Vercel serves real files first, so assets are unaffected |
@@ -141,6 +141,22 @@ This is the one setting that is easy to get wrong. Pointing Root Directory at `a
 | `VITE_API_URL` | `https://<your-service>.up.railway.app` — **no trailing slash** |
 
 > Vite inlines `VITE_`-prefixed variables at **build** time. Changing this value requires a redeploy, not a restart, and nothing placed here can be secret — it ships to the browser in plain text.
+
+### 5.1 Why `--include=dev`
+
+Vercel sets `NODE_ENV=production` for the build, and **npm omits devDependencies whenever that is set**. Everything needed to *produce* the bundle is a devDependency, so a plain `npm ci` installs none of it:
+
+```
+sh: line 1: tsc: command not found       # building @agencyflow/contracts
+```
+
+`tsc`, `vite` and `husky` are all root or workspace devDependencies, and the same omission takes out all three. They surface one at a time, in the order the build happens to reach them, which makes it look like three unrelated faults rather than one cause. It is one cause.
+
+`--include=dev` overrides `NODE_ENV` for the install only. The deployed artefact is unaffected: Vite compiles everything it needs into `apps/web/dist`, and nothing from `node_modules` is served.
+
+This mirrors the API build exactly — `apps/api/Dockerfile` carries the same flag for the same reason, and `render.yaml` did before it. Three platforms, one npm behaviour.
+
+> **Not fixed by declaring `typescript` in `packages/contracts`.** That looks like the tidier answer and does nothing here: `typescript` would still be a devDependency, and devDependencies are precisely what is being skipped. Shared build tooling lives in the root `package.json` deliberately (`00-Project-Foundation` §11) so that every workspace compiles with one version; the problem was never where it was declared.
 
 ---
 
@@ -250,7 +266,8 @@ Deploys themselves **are** automated: Railway's GitHub integration and Vercel's 
 | Seed reports "already exists" but login still fails | It connected to local MongoDB, not Atlas | Confirm the exported `MONGODB_URI` starts `mongodb+srv://` and names the `agencyflow` database |
 | Vercel build fails on the Node version | `engines.node` names a major Vercel does not offer | Vercel offers majors only (24.x, 22.x, 20.x); keep the range bounded and current |
 | `EBUSY … rmdir '/app/apps/web/node_modules/.vite'` | An automatic builder mounted a Vite cache into a backend build; `npm ci` cannot delete a mount point | Build from `apps/api/Dockerfile` (§11), which never puts the frontend in the context |
-| Container build fails, `husky: not found` | The root `prepare` script runs husky, a devDependency that `--omit=dev` correctly omits | `npm pkg delete scripts.prepare` before installing — already in the Dockerfile |
+| Any build fails, `husky: command not found` | npm runs `prepare` after every install, including production ones that have no devDependencies | `prepare` is guarded by `.husky/install.mjs`, which exits before importing husky (§12). The Dockerfile additionally deletes the script, because no CI variable is set inside `docker build` |
+| Vercel build fails, `tsc: command not found` | `NODE_ENV=production` made npm skip devDependencies, and `tsc` is one | `npm ci --include=dev` in `vercel.json` (§5.1). `vite: not found` is the same fault one step later |
 | Container build fails, `tsconfig.base.json not found` | `@agencyflow/config` was not installed by a pruned install | It is now a declared devDependency of every workspace that extends it |
 | Railway deploy is green but the URL 404s or does not exist | No public domain was generated | Settings → Networking → **Generate Domain** (§4.2). Railway exposes nothing publicly by default |
 | Railway health check fails, logs show the app listening | The service bound a port Railway is not routing to | The app reads `PORT` from the environment; confirm `PORT` was **not** set by hand as a variable |
@@ -284,7 +301,7 @@ It also exposed a latent defect worth recording. `packages/config` supplies the 
 
 | | |
 |---|---|
-| `prepare` runs `husky` | npm runs `prepare` after every install. Husky is a devDependency, so `--omit=dev` leaves it out and the install dies with `husky: not found`, exit 127 — from a line that says nothing about Git hooks. The Dockerfile deletes the script rather than setting `HUSKY=0`: that variable makes husky skip its work, but `prepare` would still try to execute a binary that is not installed |
+| `prepare` runs `husky` | Handled globally by §12. The Dockerfile *also* deletes the script, and that is not redundant: none of the environment variables the guard looks for is set inside `docker build`, and `.dockerignore` keeps `.husky` out of the context |
 | Host `node_modules` leaking in | `COPY apps/api apps/api` would carry the host's `node_modules` and `dist` into the image on top of the ones just built — a Windows-built native module in a Debian container, and a stale `dist` shadowing the fresh one. `.dockerignore` prevents it; the failure would otherwise appear at runtime, far from its cause |
 
 ### 11.3 Verified locally before deploying
@@ -299,3 +316,43 @@ image contents       -> no vite, no .vite, no apps/web sources
 ```
 
 CI now builds the image on every pull request and boots it with no configuration, asserting it reaches environment validation. That proves the whole module graph loaded — every Nest module, every Mongoose schema, and the compiled contracts package resolved through its workspace symlink. Both failures above were invisible to the other gates, because those run a full install on a normal filesystem, which is not what ships.
+
+
+---
+
+## 12. Husky and production installs
+
+npm runs the `prepare` lifecycle script after **every** `npm install` and `npm ci` — on a developer machine, in CI, and inside a production build. Only the first has any use for Git hooks, and the other two do not reliably contain Husky to run:
+
+```
+sh: line 1: husky: command not found
+npm ERR! command sh -c husky
+```
+
+The message names Husky, which makes it read like a Husky problem. It is not. `prepare` was asked to run a devDependency binary in an install that had no reason to contain one.
+
+`prepare` therefore runs `node .husky/install.mjs`, which exits early in any automated environment and only then imports Husky:
+
+| Environment | Signal | Behaviour |
+|---|---|---|
+| Developer machine | none of the below | Installs the hooks, exactly as before |
+| Vercel | `VERCEL`, `CI=1` | Skips |
+| GitHub Actions | `CI=true` | Skips |
+| Railway / any container | `RAILWAY_ENVIRONMENT`, `NODE_ENV=production` | Skips |
+| Any `--omit=dev` install | `npm_config_production` | Skips |
+
+**The guard runs before the import, and that ordering is the point.** `husky || true` in the script, or a `try/catch` around the import, would also silence the error — but by swallowing a failure rather than by declining to act. This declines to act. A genuine Husky failure on a developer machine is still a loud failure, which is what keeps the hooks trustworthy: with a solo developer, `pre-commit` and `commit-msg` *are* the review (`00-Project-Foundation` §14.4).
+
+`CI` is tested for truthiness rather than compared to `'true'`, because GitHub Actions sets `CI=true` and Vercel sets `CI=1`; matching either one alone silently fails on the other.
+
+### Verified
+
+Reproduced and then fixed against a clean checkout, running the exact commands each platform runs:
+
+```
+BEFORE  CI=1 VERCEL=1 npm ci --omit=dev   ->  'husky' is not recognized ... exit 1
+AFTER   CI=1 VERCEL=1 npm ci --omit=dev   ->  exit 0, hooks not installed
+AFTER   CI=1 VERCEL=1 npm ci              ->  exit 0
+        + contracts build, web build      ->  apps/web/dist produced
+LOCAL   npm run prepare                   ->  core.hooksPath = .husky/_
+```
