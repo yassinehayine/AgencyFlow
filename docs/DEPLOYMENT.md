@@ -129,7 +129,7 @@ This is the one setting that is easy to get wrong. Pointing Root Directory at `a
 
 | Setting | Value | Why |
 |---|---|---|
-| `installCommand` | `npm ci` | Installs the whole workspace tree, including the symlink to `contracts` |
+| `installCommand` | `npm ci --include=dev` | Installs the whole workspace tree, including the symlink to `contracts`. **`--include=dev` is mandatory** — see below |
 | `buildCommand` | contracts, then web | `contracts` must emit its ESM `dist` before Vite can resolve it |
 | `outputDirectory` | `apps/web/dist` | Vite's output, relative to the repository root |
 | `rewrites` | everything → `/index.html` | Client-side routing: a deep link must not 404 on refresh. Vercel serves real files first, so assets are unaffected |
@@ -141,6 +141,22 @@ This is the one setting that is easy to get wrong. Pointing Root Directory at `a
 | `VITE_API_URL` | `https://<your-service>.up.railway.app` — **no trailing slash** |
 
 > Vite inlines `VITE_`-prefixed variables at **build** time. Changing this value requires a redeploy, not a restart, and nothing placed here can be secret — it ships to the browser in plain text.
+
+### 5.1 Why `--include=dev`
+
+Vercel sets `NODE_ENV=production` for the build, and **npm omits devDependencies whenever that is set**. Everything needed to *produce* the bundle is a devDependency, so a plain `npm ci` installs none of it:
+
+```
+sh: line 1: tsc: command not found       # building @agencyflow/contracts
+```
+
+`tsc`, `vite` and `husky` are all root or workspace devDependencies, and the same omission takes out all three. They surface one at a time, in the order the build happens to reach them, which makes it look like three unrelated faults rather than one cause. It is one cause.
+
+`--include=dev` overrides `NODE_ENV` for the install only. The deployed artefact is unaffected: Vite compiles everything it needs into `apps/web/dist`, and nothing from `node_modules` is served.
+
+This mirrors the API build exactly — `apps/api/Dockerfile` carries the same flag for the same reason, and `render.yaml` did before it. Three platforms, one npm behaviour.
+
+> **Not fixed by declaring `typescript` in `packages/contracts`.** That looks like the tidier answer and does nothing here: `typescript` would still be a devDependency, and devDependencies are precisely what is being skipped. Shared build tooling lives in the root `package.json` deliberately (`00-Project-Foundation` §11) so that every workspace compiles with one version; the problem was never where it was declared.
 
 ---
 
@@ -251,6 +267,7 @@ Deploys themselves **are** automated: Railway's GitHub integration and Vercel's 
 | Vercel build fails on the Node version | `engines.node` names a major Vercel does not offer | Vercel offers majors only (24.x, 22.x, 20.x); keep the range bounded and current |
 | `EBUSY … rmdir '/app/apps/web/node_modules/.vite'` | An automatic builder mounted a Vite cache into a backend build; `npm ci` cannot delete a mount point | Build from `apps/api/Dockerfile` (§11), which never puts the frontend in the context |
 | Any build fails, `husky: command not found` | npm runs `prepare` after every install, including production ones that have no devDependencies | `prepare` is guarded by `.husky/install.mjs`, which exits before importing husky (§12). The Dockerfile additionally deletes the script, because no CI variable is set inside `docker build` |
+| Vercel build fails, `tsc: command not found` | `NODE_ENV=production` made npm skip devDependencies, and `tsc` is one | `npm ci --include=dev` in `vercel.json` (§5.1). `vite: not found` is the same fault one step later |
 | Container build fails, `tsconfig.base.json not found` | `@agencyflow/config` was not installed by a pruned install | It is now a declared devDependency of every workspace that extends it |
 | Railway deploy is green but the URL 404s or does not exist | No public domain was generated | Settings → Networking → **Generate Domain** (§4.2). Railway exposes nothing publicly by default |
 | Railway health check fails, logs show the app listening | The service bound a port Railway is not routing to | The app reads `PORT` from the environment; confirm `PORT` was **not** set by hand as a variable |
