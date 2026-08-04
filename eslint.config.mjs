@@ -73,6 +73,22 @@ export default tseslint.config(
     },
   },
 
+  // The Husky install guard: a Node ESM script run by npm's `prepare` hook,
+  // before any application code exists and outside every workspace. Like the
+  // operational scripts above it reports to stdout by design - that output is
+  // npm telling the developer what it just did to their Git configuration.
+  // Scoped to the single file so the rules above stay strict everywhere else.
+  {
+    files: ['.husky/*.mjs'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: { process: 'readonly', console: 'readonly' },
+    },
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
   // Prettier owns formatting entirely (00-Project-Foundation.md 11.3).
   // Must remain last so it can switch off conflicting stylistic rules.
   prettier,
