@@ -648,6 +648,7 @@ flowchart LR
 | Aspect | Decision |
 |---|---|
 | Frontend | **Vercel** — static SPA build on a global CDN. No SSR required |
+| Mobile | **React Native / Expo** ([ADR-0007](adr/0007-native-mobile-application.md)). Client Portal only; consumes the same API, shares `@agencyflow/contracts` |
 | Backend | **Railway** service (ADR-0006). Single instance, no load balancer (NFR-27) |
 | Database | **MongoDB Atlas M0** — a 3-node replica set, so transactions work (§12) |
 | Files | **Cloudinary** (ADR-0003) |

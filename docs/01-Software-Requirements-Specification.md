@@ -659,7 +659,7 @@ Explicitly excluded from version 1. Each was considered during discovery and del
 | Two-factor authentication | Q5 |
 | "Remember me" / persistent sessions | Q5 |
 | Public self-registration | Q5 — internal tool |
-| Native mobile applications | Q9 — responsive web only |
+| ~~Native mobile applications~~ | ~~Q9 — responsive web only~~ · **Reversed 2026-08-18 by [ADR-0007](adr/0007-native-mobile-application.md)** — the host company requires a React Native client for the Client Portal. The responsive web portal (FR-073, NFR-08) is unaffected and remains |
 | Internationalization / RTL | Q9 — single French locale |
 | Video or large media files | Q6 — 20 MB limit |
 | Monetary values and currency handling | Q9 — no financial features in v1 |

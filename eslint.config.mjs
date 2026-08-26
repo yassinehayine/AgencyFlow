@@ -73,6 +73,25 @@ export default tseslint.config(
     },
   },
 
+  // Bundler configuration: CommonJS by requirement, not by preference. Metro
+  // loads `metro.config.js` with `require` before any transform runs, so it
+  // cannot be an ES module however much the rest of the repository is. Scoped
+  // to the filename so nothing else regains `require`.
+  {
+    files: ['**/metro.config.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        __dirname: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
   // The Husky install guard: a Node ESM script run by npm's `prepare` hook,
   // before any application code exists and outside every workspace. Like the
   // operational scripts above it reports to stdout by design - that output is

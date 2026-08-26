@@ -1,0 +1,25 @@
+{
+  // `expo/tsconfig.base` rather than `@agencyflow/config/tsconfig.base.json`,
+  // which every other workspace extends.
+  //
+  // Not an inconsistency worth "fixing": the Expo base sets `jsx: react-jsx`,
+  // the React Native type roots and the module resolution Metro actually uses.
+  // Extending the shared config instead would produce a compiler that
+  // type-checks against Node and the DOM — for an application that has
+  // neither. The shared standards that DO apply are restated below.
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    // 00-Project-Foundation.md §11.2 — the one rule that matters most, and the
+    // reason `any` cannot creep in through a platform difference.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "exclude": ["node_modules"]
+}
